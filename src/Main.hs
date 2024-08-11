@@ -8,6 +8,7 @@ import Debug.Trace
 import Data.Fixed
 import Data.Maybe
 import Data.Bifunctor
+import Control.Monad.RWS (MonadState(put))
 
 upperEchelon :: UArray (Int, Int) Bool -> UArray (Int, Int) Bool
 upperEchelon mat = listArray ((0, 0), (lines, cols)) (concatMap elems . reverse $ psList) where
@@ -62,6 +63,16 @@ primes :: [Integer] = [2,3] ++ sieve 5 where
         top = min (n + 2^15) (2 + n*n - 4*n)
         ps = takeWhile (\p -> p*p < top) (tail primes)
 
+-- calcula o simbolo de Legendre
+legendre :: Integer -> Integer -> Integer
+legendre a p = powMod p a ((p-1) `div` 2)
+
+-- lista de primos menores ou iguais a b e 
+-- onde m é resíduo quadrático módulo p
+-- esses são os únicos primos onde x^2 = m mod p tem solução
+bPrimes :: Integer -> Integer -> [Integer]
+bPrimes b m = [x | x <- takeWhile (<=b) primes, legendre m x == 1]
+
 factorizeBSmooth :: Integer -> Integer -> [Integer]
 factorizeBSmooth b = factors where
     factors m
@@ -84,10 +95,15 @@ fermatMethod n a b = (f1, f2) where
     f1 = gcd (a + b) n
     f2 = gcd (abs (a - b)) n
 
+
+-- Calcula o limite de fatoração B:
+smoothnessBound n = ceiling . exp $ sqrt (0.5 * log n' * (log . log) n') where n' = fromInteger n
+
 -- Takes a list of candidates whose square modulo n could be smooth
 -- Yields (x, y), with x² = y² mod n
 mergeFactors n candidates = traceShow (lines, cols) (x, y) where
-    b = ceiling . exp $ sqrt (0.5 * log n' * (log . log) n') where n' = fromInteger n
+    b :: Int
+    b = fromInteger $ smoothnessBound n
 
     factorize = factorizeBSmooth (toInteger b)
     maybeFactors i = if product fs == j then Just (i, fs) else Nothing
@@ -101,7 +117,8 @@ mergeFactors n candidates = traceShow (lines, cols) (x, y) where
         . map (second countFactors)
         $ mapMaybe maybeFactors candidates    
 
-    smoothPrimes = takeWhile (<=b) . map fromInteger $ primes
+    smoothPrimes = map fromInteger $ bPrimes (toInteger b) 1
+
     primeIdx :: UArray Int Int
     primeIdx = array (0, b) (zip smoothPrimes [0..])
 
@@ -134,4 +151,17 @@ quadraticSieve n = fermatMethod n a b where
 
 main :: IO ()
 main = do
-    putStrLn "Hello, world!"
+    -- lê um inteiro N >> 0
+    n <- readLn
+    -- calcula o limite da fatoração B
+    let b = smoothnessBound n
+    -- imprime o limite B
+    putStrLn $ "B: " ++ show b
+    -- imprime quantos primos serão usados no crivo
+    putStrLn $ "Quantidade de Primos: " ++ show (length $ bPrimes b n)
+    -- calcula os fatores de N
+    let (f1, f2) = quadraticSieve n
+    -- imprime os fatores de N
+    putStrLn $ "Fatores: " ++ "x = " ++ show f1 ++ " y = " ++ show f2
+    return ()
+    
