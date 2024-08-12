@@ -111,12 +111,12 @@ mergeFactors n candidates = (x, y) where
     countFactors = map (\l -> (fromInteger . head $ l, length l)). group
     zeroIndex :: [e] -> Array Int e
     zeroIndex l = listArray (0, length l - 1) l
+
     (roots, factors) = bimap zeroIndex zeroIndex
         . unzip
         . take (20 + lines)
-        . filter (any (odd . snd) . snd)
         . map (second countFactors)
-        $ mapMaybe maybeFactors candidates    
+        $ mapMaybe maybeFactors candidates
 
     smoothPrimes = takeWhile (<=b) . map fromInteger $ primes
 
@@ -134,7 +134,9 @@ mergeFactors n candidates = (x, y) where
         $ elems factors
 
     solution = solve matrix
-    included = filter (solution!) [0 .. cols]
+    included = case findIndex (all (even . snd)) (elems factors) of
+        Just i -> [i]
+        Nothing -> filter (solution!) [0 .. cols]
 
     factorCount :: UArray Int Int
     factorCount = accumArray (+) 0 (0, lines) includedFactors where
