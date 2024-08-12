@@ -31,21 +31,23 @@ solve mat = s where
     (lines, cols) = snd $ bounds ue
     solveLine :: UArray Int Bool -> Int -> UArray Int Bool
     solveLine s i
-        -- Unbound pivot, set to one
-        | not $ ue!(i,i) = s // [(i, True)]
+        -- Unbound pivot or even amount of set variables, ignore
+        | not (ue!(i,i)) || even = s
         -- The pivot is set because it must complement the set variables and result in zero
-        | foldl xor False [ue!(i,j) && s!j | j <- [i+1..cols]] = s // [(i, True)]
-        -- If there is an even amount of set variables, the pivot is unset
-        | otherwise = s
-    s = foldl solveLine (array (0, cols) []) (reverse [0..min lines cols])
+        | otherwise = s // [(i, True)]
+        where even = foldl xor True [ue!(i,j) && s!j | j <- [i+1..cols]]
+    unbound = filter (not . (ue!) . \i -> (i, i)) [0..min lines cols]
+    start = array (0, cols) $ map (,True) unbound
+    s = foldl solveLine start (reverse [0..min lines cols])
 
 ceilSqrt :: Integer -> Integer
+ceilSqrt 0 = 0
 ceilSqrt n = heron (fromInteger n :: Deci) where
     heron xi
         | abs d > 0.5 = heron (xi+d)
-        | floor xi ^ 2 == n = floor xi
-        | otherwise = ceiling xi
-        where d = (fromInteger n / xi - xi) / 2
+        | floor xi^2 < n = floor xi + 1
+        | otherwise = floor xi
+        where d = (fromInteger n - xi * xi) / 2 / xi
 
 -- Segmento do Crivo de Eratosthenes
 -- Coprimos de primos em ps ∪ {2} entre a e b, a≅1 mod 2 e b≅1 mod 2
@@ -67,6 +69,28 @@ primes :: [Integer] = [2,3] ++ sieve 5 where
 legendre :: Integer -> Integer -> Integer
 legendre a p = powMod p a ((p-1) `div` 2)
 
+justFind f = head . filter f
+
+-- Algoritmo de Tonelly-Shanks
+tonelli :: Integer -> Integer -> Maybe (Integer, Integer)
+tonelli n p
+    | p <= 2 = Just (mod n 2, mod n 2)
+    | legendre n p == 1 = Just (r, p - r)
+    | otherwise = Nothing
+    where
+    pow = powMod p
+    (s, q) = justFind (odd . snd) $ iterate (bimap (+1) (.>>. 1)) (0, p-1)
+    z = (+ 1) . last $ takeWhile (\i -> legendre i p + 1 /= p) [1..p-1]
+    initial = (s, pow z q, pow n $ (q+1) .>>. 1, pow n q)
+    step (m, c, r, t) = (i, c', r', t') where
+        i = fst . justFind ((==1) . snd) $ iterate (bimap (+ 1) (`pow` 2)) (0, t)
+        b = pow c (shiftL 1 (m - i - 1))
+        r' = mod (r*b) p
+        c' = mod (b*b) p
+        t' = mod (t*c') p
+    condition (_, _, _, t) = mod (t - 1) p == 0
+    (_,_,r,_) = justFind condition (iterate step initial)
+
 -- lista de primos menores ou iguais a b e 
 -- onde m é resíduo quadrático módulo p
 -- esses são os únicos primos onde x^2 = m mod p tem solução
@@ -79,47 +103,15 @@ factorizeBSmooth b = factors where
     factors m
         | m <= 1 || null fs = []
         | otherwise = head fs : factors (div m $ head fs)
-        where fs = filter (\x -> x `mod` m == 0) $ bPrimes b m
-        -- where fs = [x | x <- takeWhile (<=b) primes, mod m x == 0]
+        where fs = [x | x <- takeWhile (<=b) primes, mod m x == 0]
 
--- Algoritmo de Tonelly-Shanks
--- tonelliShanks :: Integer -> Integer -> Integer
--- tonelliShanks n a = b where
---     (q, s) = (n-1, 0) where
---         (q, s) = until (odd . fst) (\(q, s) -> (q `div` 2, s+1)) (q, s)
---     z = fromMaybe defaultValue $ find (\z -> legendre z n == -1) [2..n-1]
---       where defaultValue = error "No suitable value found for z."
---     c = powMod n z q
---     r = powMod n a ((q+1) `div` 2)
---     t = powMod n a q
---     m = s
---     b = iter r t m where
---         iter r t 0 = r
---         iter r t m = iter r' t' (m-1) where
---             i :: Integer
---             i = fromMaybe defaultValue $ find (\i -> powMod n t (2^i) == n-1) [0..m-1]
---                 where defaultValue = error "No suitable value found for i."
---             r' = r * powMod n c (2^(m-i-1))
---             t' = t * powMod n c (2^(m-i))
-
--- Filtro dos candidatos para a fatoração B-smooth
-sievedCandidates :: Integer -> Integer -> Integer -> [Integer]
-sievedCandidates b n r = traceShow (b, n, r, sfs) sfs where
-    f x = x*x - n
-    fs = map f [r..r+99]
-    iPrimes = bPrimes b n
-    sfs' = foldl update fs iPrimes
-        where 
-            update fs p = let
-                sqrtN = fromInteger $ fromMaybe defaultValue $ sqrtMod p n
-                    where defaultValue = error "sqrtMod failed!!"
-                idx :: Int
-                idx = fromInteger $ (sqrtN - r + p) `mod` p
-                idx' = fromInteger $ (-sqrtN - r + p) `mod` p
-                fs' = [if i >= idx && (i - idx) `mod` (fromInteger p) == 0 then fs !! i `div` p else fs !! i | i <- [0..length fs - 1]]
-                fs'' = [if i >= idx && (i - idx) `mod` (fromInteger p) == 0 then fs' !! i `div` p else fs' !! i | i <- [0..length fs' - 1]]
-              in traceShow(p, idx, idx') fs''
-    sfs = map fst $ filter(\(x, y) -> y == 1) $ zip fs sfs'
+-- Merge duas listas ordenadas, remove elementos repetidos
+merge a [] = a
+merge [] b = b
+merge (x:xs) (y:ys)
+    | y == x = y : merge xs ys
+    | y < x = y : merge (x:xs) ys
+    | otherwise = x : merge xs (y:ys)
 
 powMod m a b = iter 1 a b where
     a |* b = mod (a*b) m
@@ -138,16 +130,12 @@ fermatMethod n a b = (f1, f2) where
 
 
 -- Calcula o limite de fatoração B:
---smoothnessBound n = ceiling . exp $ sqrt (0.5 * log n' * (log . log) n') where n' = fromInteger n
-smoothnessBound n = 1000
+smoothnessBound n = ceiling . exp $ sqrt (0.5 * log n' * (log . log) n') where n' = fromInteger n
 
 -- Takes a list of candidates whose square modulo n could be smooth
 -- Yields (x, y), with x² = y² mod n
-mergeFactors n candidates = (x, y) where
-    b :: Int
-    b = smoothnessBound n
-
-    factorize = factorizeBSmooth (toInteger b)
+mergeFactors n b candidates = (x, y) where
+    factorize = factorizeBSmooth $ toInteger b
     maybeFactors i = if product fs == j then Just (i, fs) else Nothing
         where j = mod (i*i) n; fs = factorize j
     countFactors = map (\l -> (fromInteger . head $ l, length l)). group
@@ -156,10 +144,9 @@ mergeFactors n candidates = (x, y) where
 
     (roots, factors) = bimap zeroIndex zeroIndex
         . unzip
-        . take (20 + lines)
+        . take (length smoothPrimes * 2)
         . map (second countFactors)
         $ mapMaybe maybeFactors candidates
-
     smoothPrimes = takeWhile (<=b) . map fromInteger $ primes
 
     primeIdx :: UArray Int Int
@@ -191,11 +178,51 @@ mergeFactors n candidates = (x, y) where
         . map (uncurry (powMod n) . bimap toInteger (.>>. 1))
         $ mergedFactors
 
-quadraticSieve :: Integer -> (Integer, Integer)
-quadraticSieve n = fermatMethod n a b where
+sanityCheck n = elem n (takeWhile (<=n) primes) || s*s == n || case quadraticSieve n of
+    Just (a, b) -> (a /= 1 && a /= n) || (b /= 1 && b /= n)
+    Nothing -> False
+    where s = ceilSqrt n
+findFailure = find (not . sanityCheck) [2..]
+
+isSquare n = r*r == n where r = ceilSqrt n
+
+-- Filtro dos candidatos para a fatoração B-smooth
+quadraticSieveSeg n indices len r = sfs where
+    logs :: UArray Integer Double
+    logs = accumArray (+) 0 (r, r+len-1) indices
+    condition a l = b /= 0 && (isSquare b || l  >= logB) where
+        b = mod (a^2) n
+        logB = logBase 2 . fromInteger $ (a^2 - n)
+    sfs = map fst
+        . filter (uncurry condition)
+        $ assocs logs
+
+quadraticSieve :: Integer -> Maybe (Integer, Integer)
+quadraticSieve n
+    | isSquare n = Just (r, r)
+    | (a /= 1 && a /= n) || (b /= 1 && b /= n) = Just (a, b)
+    | otherwise = traceShow (x,y) Nothing
+    where
+    bound = smoothnessBound n
     r = ceilSqrt n
-    (a, b) = mergeFactors n candidates where
-        candidates = sievedCandidates b n r
+    iPrimes = bPrimes (toInteger bound) n
+    len = maximum iPrimes * 10
+    indices :: Integer -> [(Integer, Double)]
+    indices p = map (,logBase 2 $ fromInteger p) $ merge a b where
+        (ia, ib) = fromMaybe (error "tonelli failed!!") (tonelli n p)
+        m = p - mod r p
+        repeat i = [r + i, r + i + p .. n-1]
+        [a, b] = map (repeat . (`mod` p) . (+m)) [ia, ib]
+    step (_, (i, r)) = (sfs, (i', r')) where
+        sfs = quadraticSieveSeg n (concat i'') len r
+        r' = r + len
+        (i'', i') = unzip $ map (span ((<r') . fst)) i
+    candidates = concatMap fst
+        . takeWhile ((<n+len) . snd . snd)
+        . iterate step
+        $ ([], (map indices iPrimes, r))
+    (x, y) = mergeFactors n bound candidates
+    (a, b) = fermatMethod n x y
 
 main :: IO ()
 main = do
@@ -208,8 +235,10 @@ main = do
     -- imprime quantos primos serão usados no crivo
     putStrLn $ "Quantidade de Primos: " ++ show (length $ bPrimes b n)
     -- calcula os fatores de N
-    let (f1, f2) = quadraticSieve n
-    -- imprime os fatores de N
-    putStrLn $ "Fatores: " ++ "x = " ++ show f1 ++ " y = " ++ show f2
+    case quadraticSieve n of
+        Just (f1, f2) ->
+            -- imprime os fatores de N
+            putStrLn $ "Fatores: " ++ "x = " ++ show f1 ++ " y = " ++ show f2
+        Nothing ->
+            putStrLn "A fatoração falhou"
     return ()
-    
