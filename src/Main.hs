@@ -73,12 +73,53 @@ legendre a p = powMod p a ((p-1) `div` 2)
 bPrimes :: Integer -> Integer -> [Integer]
 bPrimes b m = [x | x <- takeWhile (<=b) primes, legendre m x == 1]
 
+-- Fatoração de N com base B por tentativa de divisão
 factorizeBSmooth :: Integer -> Integer -> [Integer]
 factorizeBSmooth b = factors where
     factors m
         | m <= 1 || null fs = []
         | otherwise = head fs : factors (div m $ head fs)
-        where fs = [x | x <- takeWhile (<=b) primes, mod m x == 0]
+        where fs = filter (\x -> x `mod` m == 0) $ bPrimes b m
+        -- where fs = [x | x <- takeWhile (<=b) primes, mod m x == 0]
+
+-- Algoritmo de Tonelly-Shanks
+-- tonelliShanks :: Integer -> Integer -> Integer
+-- tonelliShanks n a = b where
+--     (q, s) = (n-1, 0) where
+--         (q, s) = until (odd . fst) (\(q, s) -> (q `div` 2, s+1)) (q, s)
+--     z = fromMaybe defaultValue $ find (\z -> legendre z n == -1) [2..n-1]
+--       where defaultValue = error "No suitable value found for z."
+--     c = powMod n z q
+--     r = powMod n a ((q+1) `div` 2)
+--     t = powMod n a q
+--     m = s
+--     b = iter r t m where
+--         iter r t 0 = r
+--         iter r t m = iter r' t' (m-1) where
+--             i :: Integer
+--             i = fromMaybe defaultValue $ find (\i -> powMod n t (2^i) == n-1) [0..m-1]
+--                 where defaultValue = error "No suitable value found for i."
+--             r' = r * powMod n c (2^(m-i-1))
+--             t' = t * powMod n c (2^(m-i))
+
+-- Filtro dos candidatos para a fatoração B-smooth
+sievedCandidates :: Integer -> Integer -> Integer -> [Integer]
+sievedCandidates b n r = traceShow (b, n, r, sfs) sfs where
+    f x = x*x - n
+    fs = map f [r..r+99]
+    iPrimes = bPrimes b n
+    sfs' = foldl update fs iPrimes
+        where 
+            update fs p = let
+                sqrtN = fromInteger $ fromMaybe defaultValue $ sqrtMod p n
+                    where defaultValue = error "sqrtMod failed!!"
+                idx :: Int
+                idx = fromInteger $ (sqrtN - r + p) `mod` p
+                idx' = fromInteger $ (-sqrtN - r + p) `mod` p
+                fs' = [if i >= idx && (i - idx) `mod` (fromInteger p) == 0 then fs !! i `div` p else fs !! i | i <- [0..length fs - 1]]
+                fs'' = [if i >= idx && (i - idx) `mod` (fromInteger p) == 0 then fs' !! i `div` p else fs' !! i | i <- [0..length fs' - 1]]
+              in traceShow(p, idx, idx') fs''
+    sfs = map fst $ filter(\(x, y) -> y == 1) $ zip fs sfs'
 
 powMod m a b = iter 1 a b where
     a |* b = mod (a*b) m
@@ -97,7 +138,8 @@ fermatMethod n a b = (f1, f2) where
 
 
 -- Calcula o limite de fatoração B:
-smoothnessBound n = ceiling . exp $ sqrt (0.5 * log n' * (log . log) n') where n' = fromInteger n
+--smoothnessBound n = ceiling . exp $ sqrt (0.5 * log n' * (log . log) n') where n' = fromInteger n
+smoothnessBound n = 1000
 
 -- Takes a list of candidates whose square modulo n could be smooth
 -- Yields (x, y), with x² = y² mod n
@@ -149,9 +191,11 @@ mergeFactors n candidates = (x, y) where
         . map (uncurry (powMod n) . bimap toInteger (.>>. 1))
         $ mergedFactors
 
+quadraticSieve :: Integer -> (Integer, Integer)
 quadraticSieve n = fermatMethod n a b where
     r = ceilSqrt n
-    (a, b) = mergeFactors n [r .. n-1]
+    (a, b) = mergeFactors n candidates where
+        candidates = sievedCandidates b n r
 
 main :: IO ()
 main = do
