@@ -144,7 +144,7 @@ mergeFactors n b candidates = (x, y) where
 
     (roots, factors) = bimap zeroIndex zeroIndex
         . unzip
-        . take (length smoothPrimes * 2)
+        . take (length smoothPrimes + 20)
         . map (second countFactors)
         $ mapMaybe maybeFactors candidates
     smoothPrimes = takeWhile (<=b) . map fromInteger $ primes
@@ -206,10 +206,9 @@ quadraticSieve n
     bound = smoothnessBound n
     r = ceilSqrt n
     iPrimes = bPrimes (toInteger bound) n
-    len = maximum iPrimes * 10
-    indices :: Integer -> [(Integer, Double)]
-    indices p = map (,logBase 2 $ fromInteger p) $ merge a b where
-        (ia, ib) = fromMaybe (error "tonelli failed!!") (tonelli n p)
+    len = shiftL 1 10
+    indices :: (Integer, Integer, Integer) -> [(Integer, Double)]
+    indices (p, ia, ib) = map (,logBase 2 $ fromInteger p) $ merge a b where
         m = p - mod r p
         repeat i = [r + i, r + i + p .. n-1]
         [a, b] = map (repeat . (`mod` p) . (+m)) [ia, ib]
@@ -217,10 +216,13 @@ quadraticSieve n
         sfs = quadraticSieveSeg n (concat i'') len r
         r' = r + len
         (i'', i') = unzip $ map (span ((<r') . fst)) i
+    primePowers = concatMap (\p -> takeWhile (<n) $ iterate (*p) p) iPrimes
+    addSolution p = (\(ia, ib) -> (p, ia, ib)) <$> tonelli n p
+    solutions = mapMaybe addSolution primePowers
     candidates = concatMap fst
         . takeWhile ((<n+len) . snd . snd)
         . iterate step
-        $ ([], (map indices iPrimes, r))
+        $ ([], (map indices solutions, r))
     (x, y) = mergeFactors n bound candidates
     (a, b) = fermatMethod n x y
 
