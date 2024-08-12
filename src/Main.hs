@@ -246,7 +246,7 @@ main = do
     case quadraticSieve n of
         (Just (f1, f2), Just (x, y)) -> do
             -- imprime os números encontrados pelo Crivo Quadrático
-            putStrLn $ "x = " ++ show f1 ++ " y = " ++ show f2
+            putStrLn $ "x = " ++ show x ++ " y = " ++ show y
             -- imprime os fatores de n
             putStrLn $ "Fatores: " ++ show f1 ++ ", " ++ show f2
         (Just (f1, f2), Nothing) -> do
