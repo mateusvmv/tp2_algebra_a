@@ -40,6 +40,8 @@ solve mat = s where
     start = array (0, cols) $ map (,True) unbound
     s = foldl solveLine start (reverse [0..min lines cols])
 
+-- Calcula o teto da raíz quadrada de um inteiro
+-- utilizando do Método de Heron
 ceilSqrt :: Integer -> Integer
 ceilSqrt 0 = 0
 ceilSqrt n = heron (fromInteger n :: Deci) where
@@ -113,17 +115,20 @@ merge (x:xs) (y:ys)
     | y < x = y : merge (x:xs) ys
     | otherwise = x : merge xs (y:ys)
 
+-- Calcula a^b mod m em O(log(b))
 powMod m a b = iter 1 a b where
     a |* b = mod (a*b) m
     iter r _ 0 = r
     iter r a b = iter r' (a |* a) (b .>>. 1)
         where r' = if odd b then r |* a else r
 
+-- Calcula a raíz quadrada de n módulo m via força bruta em O(m)
 sqrtMod m n = find (\r -> mod (r*r) m == n') [0..m-1] where n' = mod n m
 
+-- Calcula o produtório de uma lista módulo n
 productMod n = foldl (\a b -> mod (a*b) n) 1
 
--- Takes three integers, such that a² = b² mod n, and yields two factors of n
+-- Recebe três inteiros, tais que a^2 = b^2 mod n, e retorna dois fatores de n
 fermatMethod n a b = (f1, f2) where
     f1 = gcd (a + b) n
     f2 = gcd (abs (a - b)) n
@@ -132,8 +137,8 @@ fermatMethod n a b = (f1, f2) where
 -- Calcula o limite de fatoração B:
 smoothnessBound n = ceiling . exp $ sqrt (0.5 * log n' * (log . log) n') where n' = fromInteger n
 
--- Takes a list of candidates whose square modulo n could be smooth
--- Yields (x, y), with x² = y² mod n
+-- Recebe uma lista de candidatos cujo quadrado módulo n pode ser B-smooth
+-- Retorna (x, y), com x² = y² mod n e x != y mod n
 mergeFactors n b candidates = (x, y) where
     factorize = factorizeBSmooth $ toInteger b
     maybeFactors i = if product fs == j then Just (i, fs) else Nothing
@@ -179,8 +184,8 @@ mergeFactors n b candidates = (x, y) where
         $ mergedFactors
 
 sanityCheck n = elem n (takeWhile (<=n) primes) || s*s == n || case quadraticSieve n of
-    Just (a, b) -> (a /= 1 && a /= n) || (b /= 1 && b /= n)
-    Nothing -> False
+    (Just (a, b), Just (x, y)) -> (a /= 1 && a /= n) || (b /= 1 && b /= n)
+    _ -> False
     where s = ceilSqrt n
 findFailure = find (not . sanityCheck) [2..]
 
@@ -197,11 +202,12 @@ quadraticSieveSeg n indices len r = sfs where
         . filter (uncurry condition)
         $ assocs logs
 
-quadraticSieve :: Integer -> Maybe (Integer, Integer)
+-- Calcula dois fatores de um inteiro n utilizando o algoritmo do Crivo Quadrático
+quadraticSieve :: Integer -> (Maybe (Integer, Integer), Maybe (Integer, Integer))
 quadraticSieve n
-    | isSquare n = Just (r, r)
-    | (a /= 1 && a /= n) || (b /= 1 && b /= n) = Just (a, b)
-    | otherwise = traceShow (x,y) Nothing
+    | isSquare n = (Just (r, r), Nothing)
+    | (a /= 1 && a /= n) || (b /= 1 && b /= n) = (Just (a, b), Just (x, y))
+    | otherwise = traceShow (x,y) (Nothing, Nothing)
     where
     bound = smoothnessBound n
     r = ceilSqrt n
@@ -238,9 +244,15 @@ main = do
     putStrLn $ "Quantidade de Primos: " ++ show (length $ bPrimes b n)
     -- calcula os fatores de N
     case quadraticSieve n of
-        Just (f1, f2) ->
-            -- imprime os fatores de N
-            putStrLn $ "Fatores: " ++ "x = " ++ show f1 ++ " y = " ++ show f2
-        Nothing ->
+        (Just (f1, f2), Just (x, y)) -> do
+            -- imprime os números encontrados pelo Crivo Quadrático
+            putStrLn $ "x = " ++ show f1 ++ " y = " ++ show f2
+            -- imprime os fatores de n
+            putStrLn $ "Fatores: " ++ show f1 ++ ", " ++ show f2
+        (Just (f1, f2), Nothing) -> do
+            putStrLn "O algoritmo do Crivo Quadrático não foi utilizado!"
+            -- imprime os fatores de n
+            putStrLn $ "Fatores: " ++ show f1 ++ ", " ++ show f2
+        (Nothing, Nothing) ->
             putStrLn "A fatoração falhou"
     return ()
