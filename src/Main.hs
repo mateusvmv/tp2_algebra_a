@@ -34,10 +34,10 @@ solve mat = s where
         -- Unbound pivot, set to one
         | not $ ue!(i,i) = s // [(i, True)]
         -- The pivot is set because it must complement the set variables and result in zero
-        | foldl xor False [ue!(i,j) && s!j | j <- [0..i-1]] = s // [(i, True)]
+        | foldl xor False [ue!(i,j) && s!j | j <- [i+1..cols]] = s // [(i, True)]
         -- If there is an even amount of set variables, the pivot is unset
         | otherwise = s
-    s = foldl solveLine (array (0, cols) []) [0..min lines cols]
+    s = foldl solveLine (array (0, cols) []) (reverse [0..min lines cols])
 
 ceilSqrt :: Integer -> Integer
 ceilSqrt n = heron (fromInteger n :: Deci) where
@@ -101,9 +101,9 @@ smoothnessBound n = ceiling . exp $ sqrt (0.5 * log n' * (log . log) n') where n
 
 -- Takes a list of candidates whose square modulo n could be smooth
 -- Yields (x, y), with x² = y² mod n
-mergeFactors n candidates = traceShow (lines, cols) (x, y) where
+mergeFactors n candidates = (x, y) where
     b :: Int
-    b = fromInteger $ smoothnessBound n
+    b = smoothnessBound n
 
     factorize = factorizeBSmooth (toInteger b)
     maybeFactors i = if product fs == j then Just (i, fs) else Nothing
@@ -114,15 +114,16 @@ mergeFactors n candidates = traceShow (lines, cols) (x, y) where
     (roots, factors) = bimap zeroIndex zeroIndex
         . unzip
         . take (20 + lines)
+        . filter (any (odd . snd) . snd)
         . map (second countFactors)
         $ mapMaybe maybeFactors candidates    
 
-    smoothPrimes = map fromInteger $ bPrimes (toInteger b) 1
+    smoothPrimes = takeWhile (<=b) . map fromInteger $ primes
 
     primeIdx :: UArray Int Int
     primeIdx = array (0, b) (zip smoothPrimes [0..])
 
-    lines = length smoothPrimes
+    lines = length smoothPrimes - 1
     cols = length roots - 1
 
     maybeOddExp s (p, k) = if odd k then Just ((primeIdx ! p, s), True) else Nothing
@@ -139,11 +140,12 @@ mergeFactors n candidates = traceShow (lines, cols) (x, y) where
     factorCount = accumArray (+) 0 (0, lines) includedFactors where
         includedFactors = map (first (primeIdx !))
             $ concatMap (factors !) included
+    mergedFactors = map (first (smoothPrimes !!)) $ assocs factorCount
 
     x = productMod n $ map (roots !) included
     y = productMod n
-        . map ((uncurry (powMod n) . second (.>>. 1)) . first toInteger)
-        $ assocs factorCount
+        . map (uncurry (powMod n) . bimap toInteger (.>>. 1))
+        $ mergedFactors
 
 quadraticSieve n = fermatMethod n a b where
     r = ceilSqrt n
