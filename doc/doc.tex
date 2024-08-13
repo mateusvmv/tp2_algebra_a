@@ -269,6 +269,22 @@ quadraticSieveCandidates n iPrimes = candidates where
 \end{lstlisting}
 \end{minipage}
 
+Já no código abaixo, nós calculamos o segmento do crivo em si. Isto é, para cada indice calculado anteriormente que entre no segmento, nós somamos o logarítmo de seu fator primo, e para aqueles números no segmento cuja soma de logarítmos atinja o logarítmo de seu quadrado menos n nós temos grande confiança que este será composto por fatores primos pequenos. Nós também mantemos números quadrados perfeitos como candidatos, já que esses nos garantem uma solução instantânea sem precisar de passar pelos algorítmos de matriz.
+
+\begin{minipage}{0.9\linewidth}
+    \begin{lstlisting}[language=haskell,caption=Crivo Quadrático - Segmento]
+    quadraticSieveSeg n indices len r = trace ("Segmento do crivo de " ++ show r ++ " a " ++ show (r+len-1) ++ " com " ++ show (length sfs) ++ " candidatos encontrados") sfs where
+        logs :: UArray Integer Double
+        logs = accumArray (+) 0 (r, r+len-1) indices
+        condition a l = b /= 0 && (isSquare b || l  >= logB) where
+            b = mod (a^2) n
+            logB = logBase 2 . fromInteger $ (a^2 - n)
+        sfs = map fst
+            . filter (uncurry condition)
+            $ assocs logs
+    \end{lstlisting}
+    \end{minipage}    
+
 \subsection{Fatoração de Dixon}
 \label{dixon}
 O algorítmo de \textbf{Fatoração de Dixon} extende o \textbf{Método de Fermat} ao construir dois números $x^2 = y^2 \mod n$ a partir de vários números cujo quadrado módulo n possui apenas fatores primos pequenos.
