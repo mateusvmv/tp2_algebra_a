@@ -95,13 +95,13 @@ A saída do programa informa:
     \item Dois fatores não triviais de $N$.
 \end{enumerate}
 
-O programa iterativamente tenta fatorar o número com limites de fatorações difeerentes, a saída do programa informa ao usuário as tentativas feitas e seus resultados até que uma resulte em uma fatoração não trivial bem sucedida.
+O programa iterativamente tenta fatorar o número com limites de fatorações diferentes, a saída do programa informa ao usuário as tentativas feitas e seus resultados até que uma resulte em uma fatoração não trivial bem sucedida.
 
 \section{Utilização do Programa}
 
 Para utilizar o programa, primeiro instale o GHC. Caso o sistema seja Windows ou Linux, siga \href{https://www.haskell.org/downloads/}{esse tutorial}.
 
-Com o GHC instalado, abra um terminal no diretório raíz do código fonte e execute:
+Com o GHC instalado, abra um terminal no diretório raiz do código fonte e execute:
 
 \verb|ghc -O3 Main -isrc|
 
@@ -119,18 +119,18 @@ O algoritmo de \textit{Tonelli-Shanks} tem como objetivo encontrar as 2 soluçõ
     x^2 \equiv n \pmod{p}
 \end{equation}
 
-Para isso, ele utiliza do \textbf{Critério de Euler}. Ele diz que $n$ tem uma raíz quadrada módulo $p$ se e somente se:
+Para isso, ele utiliza do \textbf{Critério de Euler}. Ele diz que $n$ tem uma raiz quadrada módulo $p$ se e somente se:
 
 \begin{equation}
     n^{\frac{p-1}{2}} \equiv 1 \pmod{p}
 \end{equation}
 
-Além disso, o critério diz que quando $n$ não possui uma raíz quadrada módulo $p$, a seguinte equação vale:
+Além disso, o critério diz que quando $n$ não possui uma raiz quadrada módulo $p$, a seguinte equação vale:
 \begin{equation}
     n^{\frac{p-1}{2}} \equiv -1 \pmod{p}
 \end{equation}
 
-O algoritmo então procede sa seguinte forma:
+O algoritmo então procede da seguinte forma:
 \begin{enumerate}
     \item Encontra $S$ e $Q$ tais que $p-1 = 2^S \cdot Q$ em $O(\log p)$.
     \item Encontra um $z$ tal que $z^{\frac{p-1}{2}} \equiv -1 \pmod{p}$ em $O(\log p)$.
@@ -209,13 +209,13 @@ solve mat = trace ("Resolvendo matriz de tamanho " ++ show (snd $ bounds mat)) s
 
 \subsection{Crivo Quadrático}
 \label{quadraticSieve}
-O algorítmo do \textbf{Crivo Quadrático} utiliza de um crivo para marcar números da forma:
+O algoritmo do \textbf{Crivo Quadrático} utiliza de um crivo para marcar números da forma:
 $$ x^2 = n \bmod p \implies x^2 - n = 0 \bmod p \implies (x^2 - n) \divides p $$
-Para vários primos pequenos $p$ e suas potências, o crivo armazena seus logarítmos em cada posição que satisfaça à equação acima, e são filtrados como candidatos os valores cuja soma dos logaritmos dos primos adicionados atinja $\log (x^2 - n)$, o que nos dá uma alta confiança de que $x^2 - n$ será composto apenas desses primos pequenos.
+Para vários primos pequenos $p$ e suas potências, o crivo armazena seus logaritmos em cada posição que satisfaça à equação acima, e são filtrados como candidatos os valores cuja soma dos logaritmos dos primos adicionados atinja $\log (x^2 - n)$, o que nos dá uma alta confiança de que $x^2 - n$ será composto apenas desses primos pequenos.
 
-Em nossa implementação, nós realizamos diversas tentativas, com valores crescentes de $B$, até que uma encontre um fator não-trivial de $n$. Em cada tentativa, são gerados números primos menores que $B$, e filtramos os primos para os quais $n$ é residuo quadrático. Esses primos serão utilizados para gerar canditados para a \textbf{Fatoração de Dixon}, e então podemos utilizar o resultado disso no \textbf{Método de Fermat}.
+Em nossa implementação, nós realizamos diversas tentativas, com valores crescentes de $B$, até que uma encontre um fator não-trivial de $n$. Em cada tentativa, são gerados números primos menores que $B$, e filtramos os primos para os quais $n$ é resíduo quadrático. Esses primos serão utilizados para gerar candidatos para a \textbf{Fatoração de Dixon}, e então podemos utilizar o resultado disso no \textbf{Método de Fermat}.
 
-A complexidade do algorítmo é da ordem de $O(\exp(\sqrt{\ln n \ln \ln n}))$, bem similar à equação utilizada para obter $B = \exp(\sqrt{0.5 \ln n \ln \ln n})$. Isto é porque a complexidade dominante no algorítmo é a resolução das matrizes com \textbf{Eliminação de Gauss}, e isso tem complexidade $O(B^3)$.
+A complexidade do algoritmo é da ordem de $O(\exp(\sqrt{\ln n \ln \ln n}))$, bem similar à equação utilizada para obter $B = \exp(\sqrt{0.5 \ln n \ln \ln n})$. Isto é porque a complexidade dominante no algoritmo é a resolução das matrizes com \textbf{Eliminação de Gauss}, e isso tem complexidade $O(B^3)$.
 
 \begin{minipage}{0.9\linewidth}
 \begin{lstlisting}[language=haskell,caption=Crivo Quadrático - Principal]
@@ -232,12 +232,12 @@ quadraticSieveAttempt n bound
 
 \subsection{Crivo dos Candidatos}
 \label{sieve}
-Para gerar os candidatos para a \textbf{Fatoração de Dixon}, nós geramos os indices para cada primo, que são usados em um crivo segmentado, que trabalha com $2^{14}$ elementos por vez.
+Para gerar os candidatos para a \textbf{Fatoração de Dixon}, nós geramos os índices para cada primo, que são usados em um crivo segmentado, que trabalha com $2^{14}$ elementos por vez.
 
-Para cada primo, nós encontramos a solução para $x^2 = n \bmod p$ e a extendemos para suas potências enquanto $p^k < B$.
-Então, para cada um desses primos e suas potências, nós geramos listas de indices da forma $\ceil{\sqrt{n}} \leq x + py < n$. Para todos os primos e potências de primo ímpares, existem duas soluções para $x$, e as listas repetem até $n-1$.
+Para cada primo, nós encontramos a solução para $x^2 = n \bmod p$ e a estendemos para suas potências enquanto $p^k < B$.
+Então, para cada um desses primos e suas potências, nós geramos listas de índices da forma $\ceil{\sqrt{n}} \leq x + py < n$. Para todos os primos e potências de primo ímpares, existem duas soluções para $x$, e as listas repetem até $n-1$.
 
-Note que a igualdade $x^2 = n \bmod p$ é dada pelo algorítmo de \textbf{Tonelli Shanks}, e para as potências de primos $p^{k+1}$ basta verificar se $x p^k + y = n \bmod p^{k+1}$, com $y^2 = n \bmod p^k$, para todo $x$, em $O(p)$.
+Note que a igualdade $x^2 = n \bmod p$ é dada pelo algoritmo de \textbf{Tonelli Shanks}, e para as potências de primos $p^{k+1}$ basta verificar se $x p^k + y = n \bmod p^{k+1}$, com $y^2 = n \bmod p^k$, para todo $x$, em $O(p)$.
 
 Nossa implementação busca por mais relações que primos na matriz, para garantir que haverá pivô livre na \textbf{Eliminação de Gauss}, e portanto solução não-trivial, ao menos na eliminação, assim o número de relações geradas é da ordem de $O(\pi(B))$.
 
@@ -269,7 +269,7 @@ quadraticSieveCandidates n iPrimes = candidates where
 \end{lstlisting}
 \end{minipage}
 
-Já no código abaixo, nós calculamos o segmento do crivo em si. Isto é, para cada indice calculado anteriormente que entre no segmento, nós somamos o logarítmo de seu fator primo, e para aqueles números no segmento cuja soma de logarítmos atinja o logarítmo de seu quadrado menos n nós temos grande confiança que este será composto por fatores primos pequenos. Nós também mantemos números quadrados perfeitos como candidatos, já que esses nos garantem uma solução instantânea sem precisar de passar pelos algorítmos de matriz.
+Já no código abaixo, nós calculamos o segmento do crivo em si. Isto é, para cada índice calculado anteriormente que entre no segmento, nós somamos o logaritmo de seu fator primo, e para aqueles números no segmento cuja soma de logaritmos atinja o logaritmo de seu quadrado menos n nós temos grande confiança que este será composto por fatores primos pequenos. Nós também mantemos números quadrados perfeitos como candidatos, já que esses nos garantem uma solução instantânea sem precisar de passar pelos algoritmos de matriz.
 
 \begin{minipage}{0.9\linewidth}
     \begin{lstlisting}[language=haskell,caption=Crivo Quadrático - Segmento]
@@ -287,13 +287,13 @@ Já no código abaixo, nós calculamos o segmento do crivo em si. Isto é, para 
 
 \subsection{Fatoração de Dixon}
 \label{dixon}
-O algorítmo de \textbf{Fatoração de Dixon} extende o \textbf{Método de Fermat} ao construir dois números $x^2 = y^2 \mod n$ a partir de vários números cujo quadrado módulo n possui apenas fatores primos pequenos.
+O algoritmo de \textbf{Fatoração de Dixon} estende o \textbf{Método de Fermat} ao construir dois números $x^2 = y^2 \mod n$ a partir de vários números cujo quadrado módulo n possui apenas fatores primos pequenos.
 
 Estes números com fatores primos pequenos são combinados para gerar um quadrado perfeito. Para isso, são arranjados em uma matriz com os expoentes de cada fator primo nas células, cada coluna sendo uma relação, e cada linha sendo um fator primo. Queremos que os fatores primos tenham expoente par, igual a $0 \bmod 2$, assim nós utilizamos da \textbf{Eliminação de Gauss} para encontrar as colunas da matriz que combinadas atingem esse resultado.
 
-O algorítmo abaixo recebe uma lista de candidatos cujo quadrado módulo n pode ser B-smooth, e retorna $(x, y)$, com $x^2 = y^2$ mod n e $x \neq y$ mod n. Pode acontecer de ele encontrar um quadrado perfeito dentre os candidatos, e nesse caso ele não utiliza matriz, mas retorna o número e seu quadrado.
+O algoritmo abaixo recebe uma lista de candidatos cujo quadrado módulo n pode ser B-smooth, e retorna $(x, y)$, com $x^2 = y^2$ mod n e $x \neq y$ mod n. Pode acontecer de ele encontrar um quadrado perfeito dentre os candidatos, e nesse caso ele não utiliza matriz, mas retorna o número e seu quadrado.
 
-Como a complexidade da resolução da matriz é cúbica, e nós temos aproximadamente a mesma quantidade de linhas e colunas, isto é, igual a $\pi(B)$, a quantidade de primos menores que $B$, a complexidade final do algorítmo é $O(\pi(B)^3)$.
+Como a complexidade da resolução da matriz é cúbica, e nós temos aproximadamente a mesma quantidade de linhas e colunas, isto é, igual a $\pi(B)$, a quantidade de primos menores que $B$, a complexidade final do algoritmo é $O(\pi(B)^3)$.
 \begin{minipage}{0.9\linewidth}
 \begin{lstlisting}[language=haskell,caption=Fatoração de Dixon]
 dixon n b candidates = (x, y) where
