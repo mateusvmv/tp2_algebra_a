@@ -1,8 +1,11 @@
 \documentclass{article}
-    % General document formatting
     \usepackage[margin=0.7in]{geometry}
     \usepackage[parfill]{parskip}
     \usepackage[utf8]{inputenc}
+
+    % linguagem:
+    \usepackage[brazil]{babel}
+    \usepackage{csquotes}
 
     % bibtex
     \usepackage{biblatex}
@@ -100,7 +103,7 @@ Para utilizar o programa, primeiro instale o GHC. Caso o sistema seja Windows ou
 
 Com o GHC instalado, abra um terminal no diretório raíz do código fonte e execute:
 
-\verb|ghc -O3 -o Main -isrc|
+\verb|ghc -O3 Main -isrc|
 
 Agora, basta executar o binário \verb|Main| e em seguida digitar o inteiro de entrada, seguido por um \textit{Enter}.
 
@@ -323,8 +326,8 @@ dixon n b candidates = (x, y) where
 \end{lstlisting}
 \end{minipage}
 
+\newpage
 \section{Referências}
-
 \printbibliography
 
 
