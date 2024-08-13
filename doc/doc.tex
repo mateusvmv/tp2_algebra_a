@@ -163,48 +163,44 @@ tonelli n p
 \subsection{Resolução de Sistemas Lineares}
 \label{matrixSolver}
 
-Para a resolução de Sistemas Lineares, foi implementado um algoritmo
+Para a resolução de Sistemas Lineares, foi implementado o algoritmo da Eliminação Gaussiana para matrizes com entradas no $\mathbb{Z}_2$.
 
-\begin{align*}
-  g & = \text{mdc}(a, b) \\
-  g & = a \cdot x + b \cdot y \\
-\end{align*}
-
-Para isso, ele utiliza a seguinte recorrência
-
-\begin{align*}
-  \text{emdc}(a, b) = \begin{cases}
-    (a, 1, 0) & \text{se } b = 0 \\
-    (g, y, x - y \cdot q) & \text{c.c. }, \text{ onde } q \cdot a + r = b, (g, x, y) = \text{emdc}(b, r) \\
-\end{cases}
-\end{align*}
-
-A cada dois passos da recorrência, o maior valor diminui pelo menos pela metade, pois $\forall a, b \in \mathbb{N} \colon a \geq b \implies a \bmod b \leq \frac{a}{2}$. Logo, a complexidade total do algoritmo é $O(\log_2(\max (a, b)))$.
-
-Em particular, o Algoritmo Extendido de Euclides é utilizado para calcular o \textbf{Inverso Modular} de um inteiro $a \bmod m$. Para isso, basta calcular o $x$ tal que $ax + my = \text{mdc(a, m)}$ já que se $a$ é inversível, $\text{mdc}(a, m) = 1$ e $x \bmod m$ é seu inverso modular.
-
+A complexidade aritmética desse algoritmo é $O(n^3)$, onde $n$ é a quantidade de variáveis do sistema.
+Isso ocorre pois a cada passo da eliminação, é necessário percorrer toda a matriz para zerar os elementos abaixo do pivô.
+Como as entradas são binárias, as operações aritméticas do algoritmo são de fato constantes e a complexidade acima é a complexidade de tempo total.
 
 \begin{minipage}{.9\linewidth}
-\begin{lstlisting}[language=haskell,caption=Algoritmo Extendido de Euclides]
-egcd :: Integer -> Integer -> (Integer, Integer, Integer)
-egcd a 0 = (a, 1, 0)
-egcd a b =
-    let (g, x1, y1) = egcd b r
-    in (g, y1, x1 - y1 * q)
-        where
-            (q, r) = divMod a b
-\end{lstlisting}
-\end{minipage} \\
-Observe que a implementação para encontrar o inverso modular de um número é apenas uma chamada ao algoritmo extendido de Euclides.
+\begin{lstlisting}[language=haskell,caption=Eliminação Gaussiana]
+upperEchelon :: UArray (Int, Int) Bool -> UArray (Int, Int) Bool
+upperEchelon mat = listArray ((0, 0), (lines, cols)) (concatMap elems . reverse $ psList) where
+    (lines, cols) = snd $ bounds mat
+    lineList = [listArray (0, cols) [mat!(i,j) | j <- [0..cols]] | i <- [0..lines]]
+    findPivot [] _ = (Nothing, [])
+    findPivot (r:rs) k
+        | r!k = (Just r, rs)
+        | otherwise = (r', r:mat') where (r', mat') = findPivot rs k
+    takePivot p k r = if r!k then listArray (0, cols) [xor (r!j) (p!j) | j <- [0..cols]] else r
+    nextPivot :: ([UArray Int Bool], [UArray Int Bool]) -> Int -> ([UArray Int Bool], [UArray Int Bool])
+    nextPivot (lines, ps) k = case findPivot lines k of
+        (Just p, mat') -> (map (takePivot p k) mat', p:ps)
+        (Nothing, mat') -> (mat', array (0, cols) []:ps)
+    (_, psList) = foldl nextPivot (lineList, []) [0..cols]
 
-\begin{minipage}{.9\linewidth}
-\begin{lstlisting}[language=haskell,caption=Inverso Modular]
-invMod :: Integer -> Integer -> Integer
-invMod a m =
-    let (g, x, y) = egcd a m
-    in case g of
-        1 -> (x `mod` m + m) `mod` m
-        _ -> error $ "invMod expects coprime numbers, received " ++ show a ++ " " ++ show m
+solve :: UArray (Int, Int) Bool -> UArray Int Bool
+solve mat = trace ("Resolvendo matriz de tamanho " ++ show (snd $ bounds mat)) s where
+    ue = upperEchelon mat
+    (lines, cols) = snd $ bounds ue
+    solveLine :: UArray Int Bool -> Int -> UArray Int Bool
+    solveLine s i
+        -- Unbound pivot or even amount of set variables, ignore
+        | not (ue!(i,i)) || even = s
+        -- The pivot is set because it must complement the set variables and result in zero
+        | otherwise = s // [(i, True)]
+        where even = foldl xor True [ue!(i,j) && s!j | j <- [i+1..cols]]
+    unbound = filter (not . (ue!) . \i -> (i, i)) [0..min lines cols]
+    start = array (0, cols) $ map (,True) unbound
+    s = foldl solveLine start (reverse [0..min lines cols])
+
 \end{lstlisting}
 \end{minipage}
 
