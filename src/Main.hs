@@ -105,7 +105,7 @@ upliftTonelli n p (Just (m, (ia, ib))) = join ia' ib' where
 -- onde m é resíduo quadrático módulo p
 -- esses são os únicos primos onde x^2 = m mod p tem solução
 bPrimes :: Integer -> Integer -> [Integer]
-bPrimes b m = [x | x <- takeWhile (<=b) primes, legendre m x == 1]
+bPrimes m b = [x | x <- takeWhile (<=b) primes, legendre m x == 1]
 
 -- Fatoração de N com base B por tentativa de divisão
 factorizeBSmooth :: Integer -> Integer -> [Integer]
@@ -249,8 +249,7 @@ quadraticSieve n
   where
     r = ceilSqrt n
     bound = smoothnessBound n
-    iPrimes = reverse $ bPrimes bound n
-    candidates = map (\b -> quadraticSieveCandidates n (takeWhile (<=b) iPrimes)) iPrimes
+    candidates = map (quadraticSieveCandidates n . bPrimes n) [bound, bound*2..]
     attempts = map (quadraticSieveAttempt n (fromInteger bound)) candidates
     success = catMaybes attempts
     ((a, b), (x, y)) = head success
