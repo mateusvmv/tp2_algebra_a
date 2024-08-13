@@ -4,6 +4,10 @@
     \usepackage[parfill]{parskip}
     \usepackage[utf8]{inputenc}
 
+    % bibtex
+    \usepackage{biblatex}
+    \bibliography{doc}
+
     \usepackage{blindtext, hyperref}
     \usepackage{amsmath,amssymb,amsfonts,amsthm, mathtools}
     \usepackage{listings,xcolor,caption}
@@ -107,26 +111,51 @@ Muitos dos algoritmos, especialmente os do módulo |Numbers|, foram reaproveitad
 \subsection{Algoritmo de Tonelli-Shanks}
 \label{tonelliShanks}
 
-O algoritmo de exponenciação binária é utilizado para calcular $a^b \bmod p$, com $a, b, p \in \mathbb{Z}$. O algoritmo utiliza da seguinte recorrência:
+O algoritmo de \textit{Tonelli-Shanks} tem como objetivo encontrar as 2 soluções para a equação
+\begin{equation}
+    x^2 \equiv n \pmod{p}
+\end{equation}
 
-\begin{align*}
-  a^b \bmod p = \begin{cases}
-    1 & \text{se } b = 0 \\
-    {(a^{b/2})}^2 & \text{se } b \bmod 2 = 0 \\
-    a \cdot {(a^{(b-1)/2})}^2 & \text{se } b \bmod 2 = 1 \\
-\end{cases}
-\end{align*}
+Para isso, ele utiliza do \textbf{Critério de Euler}. Ele diz que $n$ tem uma raíz quadrada módulo $p$ se e somente se:
 
-A cada 2 passos da recorrência, o valor de $b$ diminui, pelo menos, pela metade. A recorrência para quando $b = 0$ e as transições são todas constantes, logo a complexidade de tempo do algoritmo é $O(\log_2 b)$.
+\begin{equation}
+    n^{\frac{p-1}{2}} \equiv 1 \pmod{p}
+\end{equation}
+
+Além disso, o critério diz que quando $n$ não possui uma raíz quadrada módulo $p$, a seguinte equação vale:
+\begin{equation}
+    n^{\frac{p-1}{2}} \equiv -1 \pmod{p}
+\end{equation}
+
+O algoritmo então procede sa seguinte forma:
+\begin{enumerate}
+    \item Encontra $S$ e $Q$ tais que $p-1 = 2^S \cdot Q$ em $O(\log p)$.
+    \item Encontra um $z$ tal que $z^{\frac{p-1}{2}} \equiv -1 \pmod{p}$ em $O(\log p)$.
+    \item Iterativamente encontra a "ordem" (é considerado apenas expoentes potências de 2) de $n$ no grupo multiplicativo de $\mathbb{Z} / \mathbb{Z}_p$.
+\end{enumerate}
+
+A complexidade final do pior caso do algoritmo é $O(\log^4 p)$, mas o número esperado de iterações são apenas 2, logo a complexidade esperada é apenas $O(\log p)$~\cite{Koo_Jo_Kwon_2013}.
 
 \begin{minipage}{.9\linewidth}
-\begin{lstlisting}[language=haskell,caption=Exponenciação Binária]
-binExp :: Integer -> Integer -> Integer -> Integer
-binExp a b p = f' 1 a b where
-    f' r a b
-        | b == 0 = r
-        | odd b = f' (r*a `mod` p) (a^2 `mod` p) (shiftR b 1)
-        | otherwise = f' r (a^2 `mod` p) (shiftR b 1)
+\begin{lstlisting}[language=haskell,caption=Tonelli-Shanks]
+tonelli :: Integer -> Integer -> Maybe (Integer, Integer)
+tonelli n p
+    | p <= 2 = Just (mod n 2, mod n 2)
+    | legendre n p == 1 = Just (r, p - r)
+    | otherwise = Nothing
+    where
+    pow = powMod p
+    (s, q) = justFind (odd . snd) $ iterate (bimap (+1) (.>>. 1)) (0, p-1)
+    z = (+ 1) . last $ takeWhile (\i -> legendre i p + 1 /= p) [1..p-1]
+    initial = (s, pow z q, pow n $ (q+1) .>>. 1, pow n q)
+    step (m, c, r, t) = (i, c', r', t') where
+        i = fst . justFind ((==1) . snd) $ iterate (bimap (+ 1) (`pow` 2)) (0, t)
+        b = pow c (shiftL 1 (m - i - 1))
+        r' = mod (r*b) p
+        c' = mod (b*b) p
+        t' = mod (t*c') p
+    condition (_, _, _, t) = mod (t - 1) p == 0
+    (_,_,r,_) = justFind condition (iterate step initial)
 
 \end{lstlisting}
 \end{minipage}
@@ -134,7 +163,7 @@ binExp a b p = f' 1 a b where
 \subsection{Resolução de Sistemas Lineares}
 \label{matrixSolver}
 
-O algoritmo extendido de Euclides calcula, para entradas $a, b \in \mathbb{Z}$, a tripla $(g, x, y) \in \mathbb{Z} \times \mathbb{Z} \times \mathbb{Z}$ tal que:
+Para a resolução de Sistemas Lineares, foi implementado um algoritmo
 
 \begin{align*}
   g & = \text{mdc}(a, b) \\
@@ -216,6 +245,10 @@ Observe que aqui definimos um limite para o crivo, ou seja, o $n$-ésimo primo q
 softLimit :: Integer = 2^20
 \end{lstlisting}
 \end{minipage}
+
+\section{Referências}
+
+\printbibliography
 
 
 \end{document}
