@@ -25,7 +25,7 @@ upperEchelon mat = listArray ((0, 0), (lines, cols)) (concatMap elems . reverse 
     (_, psList) = foldl nextPivot (lineList, []) [0..cols]
 
 solve :: UArray (Int, Int) Bool -> UArray Int Bool
-solve mat = s where
+solve mat = trace ("Resolvendo matriz de tamanho " ++ show (snd $ bounds mat)) s where
     ue = upperEchelon mat
     (lines, cols) = snd $ bounds ue
     solveLine :: UArray Int Bool -> Int -> UArray Int Bool
@@ -178,7 +178,7 @@ mergeFactors n b candidates = (x, y) where
 
     solution = solve matrix
     included = case findIndex (all (even . snd)) (elems factors) of
-        Just i -> [i]
+        Just i -> trace "Quadrado perfeito encontrado! Matriz não usada" [i]
         Nothing -> filter (solution!) [0 .. cols]
 
     factorCount :: UArray Int Int
@@ -201,7 +201,7 @@ findFailure = find (not . sanityCheck) [2..]
 isSquare n = r*r == n where r = ceilSqrt n
 
 -- Filtro dos candidatos para a fatoração B-smooth
-quadraticSieveSeg n indices len r = sfs where
+quadraticSieveSeg n indices len r = trace ("Calculando crivo de " ++ show r ++ " a " ++ show (r+len-1)) sfs where
     logs :: UArray Integer Double
     logs = accumArray (+) 0 (r, r+len-1) indices
     condition a l = b /= 0 && (isSquare b || l  >= logB) where
@@ -211,9 +211,9 @@ quadraticSieveSeg n indices len r = sfs where
         . filter (uncurry condition)
         $ assocs logs
 
-quadraticSieveCandidates n iPrimes = take (length iPrimes + 20) candidates where
+quadraticSieveCandidates n iPrimes = candidates where
     r = ceilSqrt n
-    len = shiftL 1 10
+    len = shiftL 1 20
     indices :: (Integer, (Integer, Integer)) -> [(Integer, Double)]
     indices (p, (ia, ib)) = map (,logBase 2 $ fromInteger p) $ merge a b where
         m = p - mod r p
@@ -233,10 +233,14 @@ quadraticSieveCandidates n iPrimes = take (length iPrimes + 20) candidates where
         . iterate step
         $ ([], (map indices solutions, r))
 
-quadraticSieveAttempt n bound candidates
+quadraticSieveAttempt n bound
     | (a /= 1 && a /= n) || (b /= 1 && b /= n) = Just ((a, b), (x, y))
-    | otherwise = Nothing
+    | otherwise = trace "Tentativa falha" Nothing
   where
+    primes = bPrimes n (toInteger bound)
+    candidates = trace ("Gerados " ++ show primeCount ++ " primos com B = " ++ show bound) c where
+        primeCount = length . takeWhile (<=toInteger bound) $ primes
+        c = quadraticSieveCandidates n primes
     (x, y) = mergeFactors n bound candidates
     (a, b) = fermatMethod n x y
 
@@ -249,9 +253,7 @@ quadraticSieve n
   where
     r = ceilSqrt n
     bound = smoothnessBound n
-    bounds = [bound, bound*2..]
-    candidates = map (quadraticSieveCandidates n . bPrimes n) bounds
-    attempts = zipWith (quadraticSieveAttempt n) (map fromInteger bounds) candidates
+    attempts = map (quadraticSieveAttempt n) [bound, bound*2..]
     success = catMaybes attempts
     ((a, b), (x, y)) = head success
 
@@ -259,12 +261,6 @@ main :: IO ()
 main = do
     -- lê um inteiro N >> 0
     n <- readLn
-    -- calcula o limite da fatoração B
-    let b = smoothnessBound n
-    -- imprime o limite B
-    putStrLn $ "B: " ++ show b
-    -- imprime quantos primos serão usados no crivo
-    putStrLn $ "Quantidade de Primos: " ++ show (length $ bPrimes b n)
     -- calcula os fatores de N
     case quadraticSieve n of
         (Just (f1, f2), Just (x, y)) -> do
