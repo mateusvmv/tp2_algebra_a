@@ -40,7 +40,7 @@
 
     \DeclarePairedDelimiter{\ceil}{\lceil}{\rceil}
 
-    \title{Trabalho 01 - Álgebra A}
+    \title{Trabalho 02 - Álgebra A}
     \author{Luis Higino, Mateus Vitor}
 
 \begin{document}
@@ -64,14 +64,12 @@ O trabalho foi desenvolvido na linguagem \href{https://www.haskell.org/}{Haskell
 
 Os módulos do código fonte são
 
-%% TODO: decidir entre manter tudo em um arquivo só ou não
-% \begin{itemize}
-% \item Utils: O módulo que implementa funções utilitárias para o resto do programa, como a \ref{binExp}.
-% \item Primes: O módulo que implementa todas as funções relativas ao cálculo da lista de primos e dos testes de primalidade. Ele utiliza do Utils.
-% \item DiscreteLog: O módulo que implementa os algoritmos para calcular o \textit{Logaritmo Discreto} (\ref{discreteLog}). Ele utiliza do Utils e do Primes.
-% \item Generator: O módulo que implementa os algoritmos para encontrar os elementos geradores. Ele utiliza o Utils e o Primes.
-% \item Main: O módulo principal do programa, que utiliza de todos os acima.
-% \end{itemize}
+\begin{itemize}
+\item Matrix: Implementa o algoritmo de resolução de sistemas lineares no $\mathbb{Z}_2$.
+\item Numbers: Implementa os algoritmos de teoria dos números, como o gerador de primos, o algoritmo de Tonelli-Shanks, etc.
+\item Sieve: Implementa o algoritmo do Crivo Quadrático para fatoração.
+\item Main: O módulo principal do programa, que utiliza de todos os acima.
+\end{itemize}
 
 \section{Formatos de Entrada e Saída}
 
@@ -90,20 +88,24 @@ A saída do programa informa:
     \item Dois fatores não triviais de $N$.
 \end{enumerate}
 
+O programa iterativamente tenta fatorar o número com limites de fatorações difeerentes, a saída do programa informa ao usuário as tentativas feitas e seus resultados até que uma resulte em uma fatoração não trivial bem sucedida.
+
 \section{Utilização do Programa}
 
-Para utilizar o programa, primeiro instale o GHC. Caso o sistema seja Windows ou LInux, siga \href{https://www.haskell.org/downloads/}{esse tutorial}.
+Para utilizar o programa, primeiro instale o GHC. Caso o sistema seja Windows ou Linux, siga \href{https://www.haskell.org/downloads/}{esse tutorial}.
 
 Com o GHC instalado, abra um terminal no diretório raíz do código fonte e execute:
 
-\verb|ghc -O3 -o Main -isrc src/Main.hs|
+\verb|ghc -O3 -o Main -isrc|
 
 Agora, basta executar o binário \verb|Main| e em seguida digitar o inteiro de entrada, seguido por um \textit{Enter}.
 
 \section{Análises de Complexidade}
 
-\subsection{Exponenciação Binária}
-\label{binExp}
+Muitos dos algoritmos, especialmente os do módulo |Numbers|, foram reaproveitados do Trabalho Prático 1. Logo, vamos discutir aqui apenas os algoritmos implementados exclusivamente para este trabalho.
+
+\subsection{Algoritmo de Tonelli-Shanks}
+\label{tonelliShanks}
 
 O algoritmo de exponenciação binária é utilizado para calcular $a^b \bmod p$, com $a, b, p \in \mathbb{Z}$. O algoritmo utiliza da seguinte recorrência:
 
@@ -129,7 +131,8 @@ binExp a b p = f' 1 a b where
 \end{lstlisting}
 \end{minipage}
 
-\subsection{Algoritmo Extendido de Euclides}
+\subsection{Resolução de Sistemas Lineares}
+\label{matrixSolver}
 
 O algoritmo extendido de Euclides calcula, para entradas $a, b \in \mathbb{Z}$, a tripla $(g, x, y) \in \mathbb{Z} \times \mathbb{Z} \times \mathbb{Z}$ tal que:
 
@@ -176,43 +179,15 @@ invMod a m =
 \end{lstlisting}
 \end{minipage}
 
-\subsection{Teorema Chinês do Resto}
+\subsection{Crivo Quadrático}
+\label{quadraticSieve}
 
-Para calcular a solução de um sistema de equações modulares com módulos coprimos:
+\subsection{Crivo dos Candidatos}
+\label{sieve}
 
-\begin{align*}
-  x \equiv \begin{cases}
-    &a_1 \bmod m_1 \\
-    &a_2 \bmod m_2 \\
-    &\vdots \\
-    &a_k \bmod m_k \\
-\end{cases}
-\end{align*}
-
-utilizamos a fórmula fechada do \textit{Teorema Chinês do Resto}, onde $M_i$ é o produto de todos os módulos menos o i-ésimo e $N_i \coloneq M_i^{-1} \bmod m_i$:
-
-\[
-  x \equiv \sum_{i=1}^{k} a_iM_iN_i (\bmod m_1m_2 \ldots m_k)
-\]
-
-Para isso, é calculado o produtório de todos os primos em $O(k)$, extraídos cada um dos $M_i, N_i$ em $O(\log_2 M_i) \approx O(\log_2 \prod_i m_i) = O(k \cdot \log_2 m)$ e por fim são somados todos os $a_iM_iN_i$ em $O(k)$, resultando em uma complexidade final de $O(k + k*(k* \log_2 m) + k) = O(k^2 \log_2 m)$.
-
-\begin{minipage}{.9\linewidth}
-\begin{lstlisting}[language=haskell,caption=Teorema Chinês do Resto]
-crt :: [(Integer, Integer)] -> Integer
-crt equations =
-    let
-        prod = product $ map snd equations
-        res = sum $ map (\(a, n) ->
-            let
-                p = prod `div` n
-                inv = invMod p n
-            in a * p * inv) equations
-    in res `mod` prod
-\end{lstlisting}
-\end{minipage}
-
-\subsection{Crivo de Eratóstenes}
+% TODO: Nome melhor
+\subsection{Merge}
+\label{merge}
 
 Para pré-calcular uma lista de primos pequenos, utilizamos do algoritmo do \textbf{Crivo de Eratóstenes}. Em particular, utilizamos uma versão com um consumo menor de memória, o crivo \textit{segmentado}, mas o princípio e complexidade são as mesmas da versão clássica e ela será explicada aqui.
 
@@ -242,405 +217,5 @@ softLimit :: Integer = 2^20
 \end{lstlisting}
 \end{minipage}
 
-\subsection{Teste de Primalidade}
-\label{isPrime}
-
-Para o teste de primalidade, temos três casos:
-
-\begin{enumerate}
-\item Se o número é menor que o limite da nossa lista de primos ao quadrado, checamos se ele possui algum fator na nossa lista, pois todo número não primo possui um divisor menor ou igual a sua raiz. Com isso, decidimos de forma determinística se ele é primo ou não.
-\item Se ele é maior que esse limite, ainda assim checamos se ele é divisível por algum dos primos na lista. Se for, temos certeza que ele não é primo. Se ele não for, passamos para o 3 passo.
-\item Rodamos o \textit{Miller Rabin} usando os 50 primeiros primos como testemunhas.
-\end{enumerate}
-
-As complexidades para os passos 1 e 2 são $O(L)$, onde $L$ é o limite da lista, pois apenas percorremos ela. Para o Miller Rabin, primeiro retiramos todas as potências de 2 de $n - 1$ em $O(\log_2 n)$, fatorando ele em $2^sd$, $d$ ímpar. Em seguida, para cada uma das testemunhas $a$, calculamos $a^d$ em $O(\log_2 d)$ com a \ref{binExp} e $s$ quadrados de $a^d$ em $O(s)$. Por fim, testamos os valores dessas potências $\bmod n$. Caso $a^d \not\equiv 1 \bmod n$ ou $a^{2^rd} \not\equiv -1 \bmod n$ para algum $r < s$, temos que $n$ não é primo. Logo, a complexidade final do algoritmo é $O(\log_2 n + 50 \cdot (\log_2 d + s)) = O(\log_2n + \log_2 d + \log_2 n) = O(\log_2 n)$.
-
-\noindent\hspace{0.03\linewidth}
-\begin{minipage}{0.9\linewidth}
-\begin{lstlisting}[language=haskell,caption=Miller-Rabin]
-isPrime :: Integer -> Bool
-isPrime n
-    | n < (softLimit^2) = isCoprime n (takeWhile (\p -> p*p <= n) primes)
-    | not $ isCoprime n (take 1000 primes) = False
-    | otherwise = (not . any witness) (take 50 primes) where
-    isCoprime n ps = not $ any (\p -> mod n p == 0) ps
-    (s, d) = f' (0, n-1) where
-        f' (s, n)
-            | even n = f' (s+1, shiftR n 1)
-            | otherwise = (s, n)
-    witness a =
-        let
-            x = binExp a d n
-            squares = iterate (\x -> x^2 `mod` n) x
-        in all (\x -> x /= 1 && x /= n-1) (take (s+1) squares)
-\end{lstlisting}
-\end{minipage}
-
-\subsection{Primeiro Primo Maior que N}
-
-De acordo com o \textit{Postulado de Bertrand}, pra todo $n$, o próximo primo maior que $n$ é menor que $2n$, logo precisamos testar a primalidade de apenas $O(n)$ números com o algoritmo \ref{isPrime}, resultando em um algoritmo $O(n\cdot (\log_2 n))$.
-
-Além disso, utilizamos de \textit{wheel factorization} para iterar apenas por números coprimos e assim reduzir o número de candidatos testados.
-
-
-\noindent\hspace{0.03\linewidth}
-\begin{minipage}{0.9\linewidth}
-\begin{lstlisting}[language=haskell,caption=Wheel Factorization e Primeiro Primo Maior que N]
--- Roda de fatoracao
-factWheel :: Int -> [Integer]
-factWheel k = sieveSeg (n+1) (n+n-1) ps where
-    ps = tail $ take k primes
-    n = 2 * product ps
-
-wheel5 :: [Integer] = factWheel 5
-wheel5Cycle :: Integer = product $ take 5 primes
-
--- Primeiro primo maior que n
-firstPrimeGT :: Integer -> Integer
-firstPrimeGT n
-    | n <= wheel5Cycle = head $ dropWhile (<= n) primes
-    | otherwise = let
-        x = n - (n `mod` wheel5Cycle)
-        wheel = [y+x-wheel5Cycle | y <- wheel5] ++ map (+wheel5Cycle) wheel
-        candidates = dropWhile (<= n) wheel
-    in head [x | x <- candidates, isPrime x]
-
-\end{lstlisting}
-\end{minipage}
-
-\subsection{Pollard Rho}
-\label{pollardRho}
-
-O algoritmo de \textit{Pollard Rho} encontra um fator de um inteiro composto $n$ encontrando um ciclo na sequência $(x_i = f(x_{i-1})) \bmod p$, onde $f$ é um polinômio da forma $f(x) = x^2 + k$, para algum $p$ divisor de $n$.
-Como não sabemos a priori o valor de $p$, procuramos esse ciclo através da sequência $x_i = f(x_{i-1}) \bmod n$.
-Encontramos um ciclo na sequência $\bmod p$ quando achamos $x_i, x_j$ na sequência $\bmod n$ tais que $\text{mdc}(x_s - s_t, n) > 1$. Caso $\text{mdc}(x_s - x_t, n) = n$, precisamos repetir com um polinômio e valor inicial diferentes, caso contrário temos um fator de $n$. É esperado que esse ciclo seja encontrado em $O(\sqrt{p})$, pelo \textit{Paradoxo do Aniversário}.
-
-Em particular, nossa implementação previamente testa vários valores de $k$ em $f(x) = x^2+ k$ até encontrar algum ciclo onde o \textit{mdc} seja diferente de $n$. Para controlar o tamanho da busca em cada sequência e o número de sequências testadas, usamos do valor esperado para o encontro do ciclo caso $p$ seja menor que $\sqrt{n}$, que é $O(\sqrt[4]{n})$. Caso não seja encontrado nenhum fator após todos esses testes, retornamos $1$. Utilizamos de uma constante para limitar o número de sequências testadas e cada sequência é procurada até $\min (4 \cdot \ceil{\sqrt[4]{n}}, C)$, onde $C$ é o maior valor de um inteiro em \textit{Haskell}. Logo, para números suficientemente grandes, o algoritmo tem complexidade constante.
-
-\noindent\hspace{0.03\linewidth}
-\begin{minipage}{0.9\linewidth}
-\begin{lstlisting}[language=haskell,caption=Pollard Rho]
--- Encontra fator com pollardRho
-pollardRho :: Integer -> Maybe Integer -> Integer
-pollardRho n lim
-    | isPrime n = n
-    | otherwise = fromMaybe 1 ds where
-        cap = toInteger (maxBound :: Int)
-        exp = fromInteger.min cap.ceiling.(*4).sqrt.sqrt.fromIntegral$n
-        max = maybe maxBound (fromInteger.min cap) lim
-        f k x = mod (x*x+k) n
-        xs = concatMap (\k -> take exp $ iterate (f k) 2) [1..]
-        ys = concatMap (\k -> take exp $ iterate (f k.f k) 2) [1..]
-        ds = find (\d -> d /= 1 && d /= n)
-            . take max
-            $ zipWith (\x y -> gcd n (x-y)) xs ys
-\end{lstlisting}
-\end{minipage}
-
-\subsection{Fatoração}
-
-A fatoração dos números em seus fatores primos foi implementada da seguinte forma:
-
-\begin{enumerate}
-\item Os fatores do número que estão presentes no crivo são retirados do número. Se o que resta é $1$, o algoritmo encerra.
-\item Caso contrário, o resto não fatorado do número é fatorado utilizando do algoritmo~\ref{pollardRho} com um limite constante no número de iterações. Ao final do processo, possivelmente sobra um fator composto grande do número, que é retornado junto com a lista de fatores primos fatorados.
-\end{enumerate}
-
-Como as iterações do \textit{Pollard Rho} e os fatores presentes no crivo são constantes, o algoritmo no pior caso tem complexidade de tempo constante.
-
-\noindent\hspace{0.03\linewidth}
-\begin{minipage}{0.9\linewidth}
-\begin{lstlisting}[language=haskell,caption=Fatoração]
--- Fatora um numero usando Pollard Rho para os fatores maiores
-factorizeRho n lim
-    | n == 1 || p == 1 = [] -- nao conseguiu um fator
-    | n == p = [n] -- n e primo
-    | otherwise = factorizeRho p lim ++ factorizeRho (div n p) lim
-    where p = pollardRho n lim
-
--- Tenta dividir um numero pelos primos no crivo, retornando os fatores encontrados e o resto
-trialDiv :: Integer -> ([Integer], Integer)
-trialDiv n = (fs, r) where
-    it (n, fs, p:ps)
-        | m==0 = (d, p:fs, p:ps)
-        | otherwise = (n, fs, ps)
-        where (d, m) = divMod n p
-    isOver (r,_,p:_) = p*p > r || p > softLimit || r==1
-    Just (r', fs', p:_) = find isOver $ iterate it (n, [], primes)
-    (r, fs) = if r'/=1 && p*p>r' then (1, r':fs') else (r', fs')
-
--- Fatora um numero por divisao, removendo os seus fatores pequenos, e entao usando Pollard Rho para os fatores maiores
-factorizeDiv n lim
-    | r == 1 = fs
-    | otherwise = fs ++ factorizeRho r lim
-    where (fs, r) = trialDiv n
-\end{lstlisting}
-\end{minipage}
-
-Dessa forma, a primeira função não estabelece um limite de iterações (sempre encontra a fatoração total mas em tempo não viável dependendo do número), ao contrário da segunda, que retorna a fatoração parcial quando não é viável encontrar a fatoração total.  
-
-\noindent\hspace{0.03\linewidth}
-\begin{minipage}{0.9\linewidth}
-\begin{lstlisting}[language=haskell,caption=Fatoração]
-data Factorization = Full [Integer] | Partial [Integer] Integer
-instance Show Factorization where
-    show (Full fs) = intercalate "*" (map show fs)
-    show (Partial fs r) = intercalate "*" (map show $ fs ++ [r]) ++ " (fatoracao parcial)"
-
--- Tenta fatorar o numero sem o limite de iteracoes
-factorize :: Integer -> [Integer]
-factorize n = sort $ factorizeDiv n Nothing
-
--- Realiza a fatoracao de um numero, com um limite de iteracoes no Pollard Rho
-factorizePartial :: Integer -> Factorization
-factorizePartial n = if n == p then Full fs else Partial fs (div n p) where
-    p = product fs
-    fs = sort $ factorizeDiv n (Just$2^20)
-\end{lstlisting}
-\end{minipage}
-
-\subsection{Algoritmos para encontrar um Gerador/Elemento de Ordem Alta}
-Foram usados dois algoritmos para encontrar um gerador(ou, elemento de ordem alta) para o grupo $\mathbb{Z}/(p\mathbb{Z})$. Vale mencionar que esses algoritmos precisam da fatoração de $p-1$, e quando isso é inviável, conseguimos encontrar apenas um elemento de ordem alta em relação à fatoração parcial de $p-1$.
-
-\subsubsection{Algoritmo I}
-Esse algoritmo se baseia na ideia inicial: testar para geradores candidatos entre $2$ e $p-1$ e cada teste se baseia em verificar se meu candidato $x$ quando elevado à $\frac{p-1}{q_i}$ é diferente de $1$ para todo $q_i$ fator potência de primo de $p-1$.
-Ou seja:
-\begin{align*}
-    x &\in \mathbb{Z}/(p\mathbb{Z})\\
-    p - 1 &= \prod_{i=1}^{m}p_i^{e_i}\\
-    q_i &= p_i^{e_i}\\
-    x \text{ é gerador } &\iff x^{\frac{p-1}{q_i}} \neq 1 \text{ para todo } q_i
-\end{align*}
-
-Dessa forma, cada teste tem complexidade $O(m)$, no qual $m$ é o número de fatores primos distintos de $p-1$. O menor gerador de um grupo foi provado por Grosswald(1981) ser $g_p < p^{0.499}$. Como o algoritmo realiza os testes enquanto não achar um gerador, a complexidade é $O(m \cdot p ^{0.499})$. Porém o algoritmo é bem mais rápido na prática, uma vez que é relativamente comum se ter geradores pequenos para esses grupos, dado que já se tem a fatoração de $p-1$.
-
-\noindent\hspace{0.03\linewidth}
-\begin{minipage}{.9\linewidth}
-\begin{lstlisting}[language=haskell, caption=Busca pelo Menor Gerador]
-smallHighOrderElement :: Factorization -> (Integer, OrderBounds)
-smallHighOrderElement f = (g, o) where
-    p = defactorize f + 1
-    g = head $ filter isHighOrder [2..(p-1)]
-    (fs, o) = case f of
-        Full fs -> (fs, Exact (p-1))
-        Partial fs r -> (r:fs, Bounded (product fs * firstPrimeGT softLimit) (p-1))
-    isHighOrder g = all
-        ((\f -> binExp g (div (p - 1) f) p /= 1) . head) (group . sort $ fs)
-
-\end{lstlisting}
-\end{minipage}
-
-\subsubsection{Algoritmo II}
-Considere que a fatoração parcial de $p-1$ é dada por $p-1 = p_1^{e_1}\cdot p_2^{e_2} \dots p_m^{e_m} \cdot N$.
-Esse algoritmo se baseia na afirmação:
-\begin{align*}
-g_1, g_2 &\in G\\
-ord(g_1) = n_1 &\text{ e } ord(g_2) = n_2\\
-mdc(n_1, n_2) = 1 &\implies ord(g_1 \cdot g_2) = n_1 \cdot n_2
-\end{align*}
-
-Vamos contruir elementos de ordem específica, fator de $p-1$ da seguinte forma:
-\begin{align*}
-b_j &= a^{(p-1)/p_j^{e_j}} \text{ para } j = 1, 2, \dots, m\\
-ord(b_j) &\vert p_j^{e_j}                           &&\text{Por construção}\\
-b_j ^ {(p-1)/p_j} &\neq 1 \implies ord(b_j)=p_j^{e_j}
-\end{align*}
-Dessa forma, quando temos a fatoração total de $p-1$, para cada fator primo $p_i^{e_i}$, podemos encontrar um elemento da ordem do fator e os multiplicar para obter um gerador de ordem $p-1$. 
-Já quando temos apenas a fatoração parcial, fazemos o mesmo processo para os fatores $p_i^{e_i}$ conhecidos e para o fator desconhecido $N$, porém aqui não saberemos a ordem exata para este elemento, apenas que está entre $\frac{p-1}{N}$ e $p-1$. 
-
-\noindent\hspace{0.03\linewidth}
-\begin{minipage}{.9\linewidth}
-\begin{lstlisting}[language=haskell,caption=Algoritmo de Gauss]
-highOrderElement :: Factorization -> (Integer, OrderBounds)
-highOrderElement f = (g, o) where
-    p = defactorize f + 1
-    (fs, o) = case f of
-        Full fs -> (fs, Exact (p-1))
-        Partial fs r -> (r:fs, Bounded (product fs * firstPrimeGT softLimit) (p-1))
-    g = foldl (\a b -> mod (a*b) p) 1 bs
-    bs = map findB.multiplicity$fs
-    findB (f, k) = head
-        . filter (\b -> binExp b (div (p-1) f) p /= 1)
-        . map (\a -> binExp a (div (p-1) (f^k)) p)
-        $ primes
-    multiplicity = map (\f -> (head f, length f)).group.sort
-
-\end{lstlisting}
-\end{minipage}
-
-\subsection{Logarítmo Discreto}
-\label{discreteLog}
-O problema do logarítmo discreto é a equação
-$$ a^k = b \text{ em } G = \langle a \rangle\text{, com }|G| = n\text{ e }b \in G$$
-
-Na escolha do algoritmo para resolver esse problema, nos baseamos no tamanho $n$ da ordem do grupo e no tamanho do maior fator primo de $n-1$, visto que cada um deles tem uma complexidade diferente sobre esses parâmetros, como será mencionado nas seções seguintes. Mas a escolha ocorre da seguinte forma:
-\begin{itemize}
-    \item Se $n$ é pequeno ($n < 2^{10} = 1024$), utilizamos Força Bruta.
-    \item Se $n$ é médio ($n < 2^{34} \approx 10^{10}$), utilizamos o algoritmo de Baby-Step Giant-Step.
-    \item Se $n$ é grande, verificamos se é possível fatorar $n-1$ (Visto que o pohligHellman utiliza dessa fatoração total): 
-    \subitem Caso positivo, e o maior fator é menor que $2^{34} \approx 10^{10}$ utilizamos o algoritmo de Pohlig-Hellman Generalizado.
-    \subitem Caso negativo, é inviável resolver o problema. 
-\end{itemize}
-
-Observe que a inviabilidade de resolver o problema é determinada pela fatoração de $n-1$. A escolha de cada algoritmo para esses intervalos de valores tem base no tempo de execução esperado para cada um deles. Assim não é esperado que o programa rode por muitos segundos tentando resolver o problema.
-
-\noindent\hspace{0.03\linewidth}
-\begin{minipage}{.9\linewidth}
-\begin{lstlisting}[language=haskell,caption=Logarítmo Discreto]
-discreteLog :: Integer -> Integer -> Factorization -> Maybe Integer
-discreteLog a g f
-    | m < 2^10 = naiveDiscreteLog a g m
-    | m < 2^34 = babyGiantSteps a g m
-    | otherwise = case f of
-        Full fs -> if maximum fs < 2^34
-            then pohligHellman a g fs
-            else Nothing
-        Partial _ _ -> Nothing
-    where m = defactorize f + 1
-\end{lstlisting}
-\end{minipage}
-
-\subsubsection{Força Bruta}
-Esse algoritmo é a solução mais simples para o problema, que consiste em testar valores do grupo até encontrar o valor correto.
-Dessa maneira, a complexidade dessa solução ingênua é $O(n)$.
-
-\noindent\hspace{0.03\linewidth}
-\begin{minipage}{.9\linewidth}
-\begin{lstlisting}[language=haskell,caption=Logarítmo Discreto Ingênuo]
-naiveDiscreteLog b a p = fmap fst . find ((==b) . snd) . zip [0..p-1] $ iterate ((`mod`p) . (*a)) 1
-\end{lstlisting}
-\end{minipage}
-
-\subsubsection{Pohlig-Hellman Generalizado}
-O algorítmo de Pohlig-Hellman é utilizado para resolver a equação
-$$ a^k = b \text{ em } G = \langle a \rangle\text{, com }|G| = n\text{ e }b \in G$$
-$$ n = \prod_{i=1}^{m}p_i^{e_i} \text{ fatoração em primos} $$
-Para cada fator primo $p_i$ com multiplicidade $e_i$, nós calculamos
-\begin{align*}
-    a_i &= a^{n/p_i^{e_i}}\\
-    b_i &= b^{n/p_i^{e_i}}\\
-        &= a^{k n/p_i^{e_i}} = a_i^k\\
-    b_i = a_i^k &\implies b_i \in \langle a_i \rangle            &&\text{Por construção}\\
-    ord(a_i) = p_i^{e_i} &\implies b_i = a_i^{k \bmod p_i^{e_i}} &&\text{Pelo teorema de Lagrange}
-\end{align*}
-Chamemos $ k_i = k \bmod p_i^{e_i} $, podemos então calcular $k_i$ em grupos de ordem $p_i^{e_i}$ ao resolver $a_i^{k_i} \equiv b_i \bmod p_i^{e_i}$, e obter $k$ ao solucionar o sistema
-\begin{align*}
-    k &= k_1 \bmod p_1^{e_1} \\
-    k &= k_2 \bmod p_2^{e_2} \\
-    &\;\;\vdots \\
-    k &= k_m \bmod p_m^{e_m}
-\end{align*}
-A implementação calcula $k_i$ para cada fator primo de $n$ com auxílio da função Pohlig-Hellman para grupos de ordem primária em $O(e_i\sqrt{p_i})$, então calcula $k$ utilizando o algorítmo para o teorema Chinês do resto em $O(m)$.
-A complexidade da função é $O(\sqrt[4]{n}\ log^2{n})$, já que $m, e \leq \log{n}$ e $p \leq \sqrt{n}$
-
-\noindent\hspace{0.03\linewidth}
-\begin{minipage}{.9\linewidth}
-\begin{lstlisting}[language=haskell,caption=Pohlig Hellman]
-pohligHellman :: Integer -> Integer -> [Integer] -> Maybe Integer
-pohligHellman a g f
-    | any (\(x, val) -> isNothing x) equations = Nothing
-    | otherwise = Just $ crt (map (\(Just x, val) -> (x, val)) equations)
-    where
-        m = product f + 1
-        groupOrder = m - 1
-        facts = map (\x -> (head x, toInteger . length $ x)) . group . factorize $ groupOrder
-        equations = map (\(q, e) ->
-            let
-                di = binExp q e m
-                a' = binExp a (groupOrder `div` di) m
-                g' = binExp g (groupOrder `div` di) m
-                ni = pohligPrimePower a' g' (q, e) m
-            in (ni, di)) facts
-\end{lstlisting}
-\end{minipage}
-
-
-\subsubsection{Pohlig-Hellman com Ordem Primária}
-O algorítmo de Pohlig-Hellman em um grupo com ordem primária, \emph{i.e.} potência de primo, calcula
-$$ a^k = b \text{ em } G = \langle a \rangle\text{, com }|G| = p^e\text{ e }b \in G$$
-Suponha que tenhamos grupos denotados por
-\begin{align*}
-    G_0 &= G\\
-    G_i &= \lbrace x^{p^i} \vert\ x \in G \rbrace\\
-    G_e &= \lbrace x^{p^e} = 1 \vert\ x \in G \rbrace   &&\text{Pela definição de ordem}\\
-  |G_i| &= p^{e-i}                                      &&\text{Pelo teorema de Lagrange}
-\end{align*}
-Façamos uma sequência $b$
-\begin{align*}
-    b_0 &= b\\
-    b_{i+1} &= b_i a^{-k_i p^{i}}
-\end{align*}
-Definimos $k_i$ como a solução para uma equação utilizando $\pi_i(x) : G_i \rightarrow G_{e-1} |\ x \in G_i$
-\begin{align*}
-    \pi_i(x) &= x^{p^{e-1-i}}\\
-    \pi_0(a)^{k_i} &= \pi_i(b_i)
-\end{align*}
-Observe que $b_i \in G_i$, e portanto $b_e \in G_e$, então $b_e = 1$. Se $b_i$ está em $G_i$ então há solução $k_i$
-\begin{align*}
-    b_0 &\in G_0\\
-    \pi_i(b_{i+1}) &= \pi_i(b_i)\pi_i(a)^{-k_ip^i}          &&\text{$\pi_i$ aplicado à definição de $b_{i+1}$}\\
-    \pi_i(b_{i+1}) &= \pi_0(a)^{k_i}\pi_0(a)^{-k_i} = 1     &&\text{Usando a definição de $k_i$}\\
-    b_{i+1}^{p^{e-1-i}} = 1 &\implies b_{i+1} = x^{p^{i+1}} &&\text{Pela definição de ordem}\\
-    b_{i+1} &\in G_{i+1}                                    &&\text{Pela definição de $G_i$}
-\end{align*}
-Ao expandir $b_e$, obtemos o inverso de $b_0$
-\begin{align*}
-    1 &= b_e\\
-    &= b_{e-1}a^{-k_{e-1} p^{e-1}}\\
-    &= b_{e-2}a^{-\sum_{i=e-2}^{e-1}{k_i p^i}}\\
-    &\;\;\vdots\\
-    &= b_{0}a^{-\sum_{i=0}^{e-1}{k_i p^i}}\\
-    a^{\sum_{i=0}^{e-1}{k_i p^i}} &= b\\
-  \text{ então } k &= \sum_{i=0}^{e-1}{k_i p^i}\\
-\end{align*}
-Assim, resolvemos $e$ equações $\pi(a)^{k_i} = \pi(b_i)$ em $G_{e-1}$, de ordem $p$, utilizando o Baby-Step Giant-Step em $O(\sqrt{p})$, e obtemos $k$ pela equação acima. A complexidade do algorítmo é $O(e\sqrt{p})$
-
-\noindent\hspace{0.03\linewidth}
-\begin{minipage}{.9\linewidth}
-\begin{lstlisting}[language=haskell,caption=Pohlig Prime Power]
-pohligPrimePower :: Integer -> Integer -> (Integer, Integer) -> Integer -> Maybe Integer
-pohligPrimePower b a (p, e) m = k where
-    tex($\pi$tex) i x = binExp x (p^(e-1-i)) m
-    solve b i = babyGiantSteps' (tex($\pi$tex) i b) (tex($\pi$tex) 0 a) m p
-    it (i, b, k) = (i+1, b',) <$> solve b' (i+1) where
-        b' = mod (b * binExp a (m-1-k*(p^i)) m) m
-    k = fmap (sum.map (\(i,_,k) -> k*p^i))
-        . sequence
-        . take (fromInteger e)
-        $ iterate (it=<<) ((0,b,) <$> solve b 0)
-\end{lstlisting}
-\end{minipage}
-
-\subsubsection{Baby-Step Giant-Step}
-O algoritmo Baby-Step Giant-Step é utilizado para resolver a equação
-$$ a^k = b \text{ em } G = \langle a \rangle\text{, com }|G| = n\text{ e }b \in G$$
-$$ r = \lceil \sqrt{n} \rceil $$
-Dado que $ |G| = n $, então $ a^k = a^{k \mod n} $, e $ 0 \leq k < n $. Assim, re-escrevemos $ k = j r + i $ com $ 0 \leq i, j < r $.\\
-Para encontrar $i$ e $j$, o algoritmo calcula duas sequências
-\begin{align*}
-    x_i &= a^i\\
-    y_j &= b a^{-j r} = a^{k - j r}\\
-        &= a^{j r + i - j r}\\
-        &= a^{i}
-\end{align*}
-A implementação requer que encontremos $i$ e $j$ tal que $x_i = y_j$. As sequências tem tamanho $r$, são ordenadas em $O(r \log r)$, e buscamos elementos iguais em $O(r)$. A complexidade é $O(r \log r)$
-
-\noindent\hspace{0.03\linewidth}
-\begin{minipage}{.9\linewidth}
-\begin{lstlisting}[language=haskell,caption=Baby-Steps Giant-Steps]
-babyGiantSteps' :: Integer -> Integer -> Integer -> Integer -> Maybe Integer
-babyGiantSteps' b a p n = f xs ys where
-    r = toInteger . ceiling . sqrt . fromIntegral $ n
-    s = invMod (binExp a r p) p
-    xs = sortOn fst $ zip (iterate ((`mod`p).(*a)) 1) [0..r-1]
-    ys = sortOn fst $ zip (iterate ((`mod`p).(*s)) b) [0..r-1]
-    f [] _ = Nothing
-    f _ [] = Nothing
-    f xxs@((x,i):xs) yys@((y,j):ys)
-        | x>y = f xxs ys
-        | x<y = f xs yys
-        | otherwise = Just $ j*r + i
-\end{lstlisting}
-\end{minipage}
 
 \end{document}
