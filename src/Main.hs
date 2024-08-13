@@ -201,7 +201,7 @@ findFailure = find (not . sanityCheck) [2..]
 isSquare n = r*r == n where r = ceilSqrt n
 
 -- Filtro dos candidatos para a fatoração B-smooth
-quadraticSieveSeg n indices len r = trace ("Calculando crivo de " ++ show r ++ " a " ++ show (r+len-1)) sfs where
+quadraticSieveSeg n indices len r = trace ("Segmento do crivo de " ++ show r ++ " a " ++ show (r+len-1) ++ " com " ++ show (length sfs) ++ " candidatos encontrados") sfs where
     logs :: UArray Integer Double
     logs = accumArray (+) 0 (r, r+len-1) indices
     condition a l = b /= 0 && (isSquare b || l  >= logB) where
@@ -213,17 +213,18 @@ quadraticSieveSeg n indices len r = trace ("Calculando crivo de " ++ show r ++ "
 
 quadraticSieveCandidates n iPrimes = candidates where
     r = ceilSqrt n
-    len = shiftL 1 20
+    len = shiftL 1 14
     indices :: (Integer, (Integer, Integer)) -> [(Integer, Double)]
     indices (p, (ia, ib)) = map (,logBase 2 $ fromInteger p) $ merge a b where
         m = p - mod r p
         repeat i = [r + i, r + i + p .. n-1]
         [a, b] = map (repeat . (`mod` p) . (+m)) [ia, ib]
     primePowers' p (ia, ib) = catMaybes
-        . takeWhile (maybe False ((<n) . fst))
+        . takeWhile (maybe False ((<maximum iPrimes) . fst))
         $ iterate (upliftTonelli n p) (Just (p, (ia, ib)))
     primePowers p = maybe [] (primePowers' p) (tonelli n p)
-    solutions = concatMap primePowers iPrimes
+    solutions = trace ("Primos e potências usados no crivo: " ++ show (length s)) s where
+        s = concatMap primePowers iPrimes
     step (_, (i, r)) = (sfs, (i', r')) where
         sfs = quadraticSieveSeg n (concat i'') len r
         r' = r + len
@@ -235,7 +236,7 @@ quadraticSieveCandidates n iPrimes = candidates where
 
 quadraticSieveAttempt n bound
     | (a /= 1 && a /= n) || (b /= 1 && b /= n) = Just ((a, b), (x, y))
-    | otherwise = trace "Tentativa falha" Nothing
+    | otherwise = Nothing
   where
     primes = bPrimes n (toInteger bound)
     candidates = trace ("Gerados " ++ show primeCount ++ " primos com B = " ++ show bound) c where
