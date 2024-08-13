@@ -8,7 +8,6 @@ import Debug.Trace
 import Data.Fixed
 import Data.Maybe
 import Data.Bifunctor
-import Control.Monad.RWS (MonadState(put))
 
 upperEchelon :: UArray (Int, Int) Bool -> UArray (Int, Int) Bool
 upperEchelon mat = listArray ((0, 0), (lines, cols)) (concatMap elems . reverse $ psList) where
@@ -93,6 +92,15 @@ tonelli n p
     condition (_, _, _, t) = mod (t - 1) p == 0
     (_,_,r,_) = justFind condition (iterate step initial)
 
+-- Resolve x² = n mod p^k, dado m = p^(k-1), com ia e ib sendo soluções para x² = n mod m
+upliftTonelli _ _ Nothing = Nothing
+upliftTonelli n p (Just (m, (ia, ib))) = join ia' ib' where
+    m' = m*p
+    scan = find (\x -> mod (x*x) m' == mod n m')
+    (ia', ib') = (scan [ia, ia+m .. m'-1], scan [ib, ib+m .. m'-1])
+    join (Just ia) (Just ib) = Just (m', (ia, ib))
+    join _ _ = Nothing
+
 -- lista de primos menores ou iguais a b e 
 -- onde m é resíduo quadrático módulo p
 -- esses são os únicos primos onde x^2 = m mod p tem solução
@@ -133,9 +141,10 @@ fermatMethod n a b = (f1, f2) where
     f1 = gcd (a + b) n
     f2 = gcd (abs (a - b)) n
 
-
 -- Calcula o limite de fatoração B:
-smoothnessBound n = ceiling . exp $ sqrt (0.5 * log n' * (log . log) n') where n' = fromInteger n
+smoothnessBound n = ceiling r where
+    n' = fromInteger n
+    r = exp $ sqrt (0.5 * log n' * (log . log) n')
 
 -- Recebe uma lista de candidatos cujo quadrado módulo n pode ser B-smooth
 -- Retorna (x, y), com x² = y² mod n e x != y mod n
@@ -202,35 +211,49 @@ quadraticSieveSeg n indices len r = sfs where
         . filter (uncurry condition)
         $ assocs logs
 
--- Calcula dois fatores de um inteiro n utilizando o algoritmo do Crivo Quadrático
-quadraticSieve :: Integer -> (Maybe (Integer, Integer), Maybe (Integer, Integer))
-quadraticSieve n
-    | isSquare n = (Just (r, r), Nothing)
-    | (a /= 1 && a /= n) || (b /= 1 && b /= n) = (Just (a, b), Just (x, y))
-    | otherwise = traceShow (x,y) (Nothing, Nothing)
-    where
-    bound = smoothnessBound n
+quadraticSieveCandidates n iPrimes = take (length iPrimes + 20) candidates where
     r = ceilSqrt n
-    iPrimes = bPrimes (toInteger bound) n
     len = shiftL 1 10
-    indices :: (Integer, Integer, Integer) -> [(Integer, Double)]
-    indices (p, ia, ib) = map (,logBase 2 $ fromInteger p) $ merge a b where
+    indices :: (Integer, (Integer, Integer)) -> [(Integer, Double)]
+    indices (p, (ia, ib)) = map (,logBase 2 $ fromInteger p) $ merge a b where
         m = p - mod r p
         repeat i = [r + i, r + i + p .. n-1]
         [a, b] = map (repeat . (`mod` p) . (+m)) [ia, ib]
+    primePowers' p (ia, ib) = catMaybes
+        . takeWhile (maybe False ((<n) . fst))
+        $ iterate (upliftTonelli n p) (Just (p, (ia, ib)))
+    primePowers p = maybe [] (primePowers' p) (tonelli n p)
+    solutions = concatMap primePowers iPrimes
     step (_, (i, r)) = (sfs, (i', r')) where
         sfs = quadraticSieveSeg n (concat i'') len r
         r' = r + len
         (i'', i') = unzip $ map (span ((<r') . fst)) i
-    primePowers = concatMap (\p -> takeWhile (<n) $ iterate (*p) p) iPrimes
-    addSolution p = (\(ia, ib) -> (p, ia, ib)) <$> tonelli n p
-    solutions = mapMaybe addSolution primePowers
     candidates = concatMap fst
         . takeWhile ((<n+len) . snd . snd)
         . iterate step
         $ ([], (map indices solutions, r))
+
+quadraticSieveAttempt n bound candidates
+    | (a /= 1 && a /= n) || (b /= 1 && b /= n) = Just ((a, b), (x, y))
+    | otherwise = Nothing
+  where
     (x, y) = mergeFactors n bound candidates
     (a, b) = fermatMethod n x y
+
+-- Calcula dois fatores de um inteiro n utilizando o algoritmo do Crivo Quadrático
+quadraticSieve :: Integer -> (Maybe (Integer, Integer), Maybe (Integer, Integer))
+quadraticSieve n
+    | isSquare n = (Just (r, r), Nothing)
+    | null success = (Nothing, Nothing)
+    | otherwise = (Just (a, b), Just (x, y))
+  where
+    r = ceilSqrt n
+    bound = smoothnessBound n
+    iPrimes = reverse $ bPrimes bound n
+    candidates = map (\b -> quadraticSieveCandidates n (takeWhile (<=b) iPrimes)) iPrimes
+    attempts = map (quadraticSieveAttempt n (fromInteger bound)) candidates
+    success = catMaybes attempts
+    ((a, b), (x, y)) = head success
 
 main :: IO ()
 main = do
