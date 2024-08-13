@@ -214,9 +214,11 @@ O algorítmo do \textbf{Crivo Quadrático} utiliza de um crivo para marcar núme
 $$ x^2 = n \bmod p \implies x^2 - n = 0 \bmod p \implies (x^2 - n) \divides p $$
 Para vários primos pequenos $p$ e suas potências, o crivo armazena seus logarítmos em cada posição que satisfaça à equação acima, e são filtrados como candidatos os valores cuja soma dos logaritmos dos primos adicionados atinja $\log (x^2 - n)$, o que nos dá uma alta confiança de que $x^2 - n$ será composto apenas desses primos pequenos.
 
-\begin{minipage}{0.9\linewidth}
 Em nossa implementação, nós realizamos diversas tentativas, com valores crescentes de $B$, até que uma encontre um fator não-trivial de $n$. Em cada tentativa, são gerados números primos menores que $B$, e filtramos os primos para os quais $n$ é residuo quadrático. Esses primos serão utilizados para gerar canditados para a \textbf{Fatoração de Dixon}, e então podemos utilizar o resultado disso no \textbf{Método de Fermat}.
 
+A complexidade do algorítmo é da ordem de $O(\exp(\sqrt{\ln n \ln \ln n}))$, bem similar à equação utilizada para obter $B = \exp(\sqrt{0.5 \ln n \ln \ln n})$. Isto é porque a complexidade dominante no algorítmo é a resolução das matrizes com \textbf{Eliminação de Gauss}, e isso tem complexidade $O(B^3)$.
+
+\begin{minipage}{0.9\linewidth}
 \begin{lstlisting}[language=haskell,caption=Crivo Quadrático - Principal]
 quadraticSieveAttempt n bound
     | (a /= 1 && a /= n) || (b /= 1 && b /= n) = Just ((a, b), (x, y))
@@ -268,36 +270,60 @@ quadraticSieveCandidates n iPrimes = candidates where
 \end{lstlisting}
 \end{minipage}
 
+\subsection{Fatoração de Dixon}
+\label{dixon}
+O algorítmo de \textbf{Fatoração de Dixon} extende o \textbf{Método de Fermat} ao construir dois números $x^2 = y^2 \mod n$ a partir de vários números cujo quadrado módulo n possui apenas fatores primos pequenos.
 
-% TODO: Nome melhor
-\subsection{Merge}
-\label{merge}
+Estes números com fatores primos pequenos são combinados para gerar um quadrado perfeito. Para isso, são arranjados em uma matriz com os expoentes de cada fator primo nas células, cada coluna sendo uma relação, e cada linha sendo um fator primo. Queremos que os fatores primos tenham expoente par, igual a $0 \bmod 2$, assim nós utilizamos da \textbf{Eliminação de Gauss} para encontrar as colunas da matriz que combinadas atingem esse resultado.
 
-Para pré-calcular uma lista de primos pequenos, utilizamos do algoritmo do \textbf{Crivo de Eratóstenes}. Em particular, utilizamos uma versão com um consumo menor de memória, o crivo \textit{segmentado}, mas o princípio e complexidade são as mesmas da versão clássica e ela será explicada aqui.
+O algorítmo abaixo recebe uma lista de candidatos cujo quadrado módulo n pode ser B-smooth, e retorna $(x, y)$, com $x^2 = y^2$ mod n e $x \neq y$ mod n. Pode acontecer de ele encontrar um quadrado perfeito dentre os candidatos, e nesse caso ele não utiliza matriz, mas retorna o número e seu quadrado.
 
-Inicializamos a lista de primos com o $2$ e um vetor de booleanos, assumindo a priori que todos os números são primos, menos o $1$. Em seguida, percorremos os números de $3$ até um certo limite $N$, com passos de $+2$ pois nenhum número par diferente de 2 é primo. Por fim, toda vez que chegamos em um número checamos se ele já foi marcado como não primo. Se sim, continuamos, se não adicionamos ele na lista e marcamos todos os seus múltiplos como não primos. Esse algoritmo tem complexidade $O(\sum_{p \leq n} \frac{n}{p}) = O(n \cdot \sum_{p \leq n}\frac{1}{p})$. Não será demonstrado aqui, mas isso é $O(n \cdot \log \log n)$.
-
+Como a complexidade da resolução da matriz é cúbica, e nós temos aproximadamente a mesma quantidade de linhas e colunas, isto é, igual a $\pi(B)$, a quantidade de primos menores que $B$, a complexidade final do algorítmo é $O(\pi(B)^3)$.
 \begin{minipage}{0.9\linewidth}
-\begin{lstlisting}[language=haskell,caption=Crivo de Eratóstenes e Lista dos primos]
--- Crivo Segmentado
-sieveSeg a' b' ps = [i*2+1 | i <- [a..b], coprime ! i] where
-a = shiftR a' 1; b = shiftR b' 1
-muls p = [l, l+p .. b] where l = shiftR (p * ((a'+p-1) `div` p .|. 1)) 1
-coprime = accumArray (\_ b -> b) True (a, b) (map (,False) $ concatMap muls ps) :: UArray Integer Bool
+\begin{lstlisting}[language=haskell,caption=Fatoração de Dixon]
+dixon n b candidates = (x, y) where
+    factorize = factorizeBSmooth $ toInteger b
+    maybeFactors i = if product fs == j then Just (i, fs) else Nothing
+        where j = mod (i*i) n; fs = factorize j
+    countFactors = map (\l -> (fromInteger . head $ l, length l)). group
+    zeroIndex :: [e] -> Array Int e
+    zeroIndex l = listArray (0, length l - 1) l
 
--- Lista dos Primos
-primes :: [Integer] = [2,3] ++ sieve 5 where
-sieve n = sieveSeg n top ps ++ sieve (top+2) where
-    top = min (n + 2^15) (2 + n*n - 4*n)
-    ps = takeWhile (\p -> p*p < top) (tail primes)
-\end{lstlisting}
-\end{minipage}
+    (roots, factors) = bimap zeroIndex zeroIndex
+        . unzip
+        . take (length smoothPrimes + 20)
+        . map (second countFactors)
+        $ mapMaybe maybeFactors candidates
+    smoothPrimes = takeWhile (<=b) . map fromInteger $ primes
 
-Observe que aqui definimos um limite para o crivo, ou seja, o $n$-ésimo primo que é calculado em tempo hábil:
+    primeIdx :: UArray Int Int
+    primeIdx = array (0, b) (zip smoothPrimes [0..])
 
-\begin{minipage}{0.9\linewidth}
-\begin{lstlisting}[language=haskell,caption=Limite do Crivo]
-softLimit :: Integer = 2^20
+    lines = length smoothPrimes - 1
+    cols = length roots - 1
+
+    maybeOddExp s (p, k) = if odd k then Just ((primeIdx ! p, s), True) else Nothing
+    matrix :: UArray (Int, Int) Bool
+    matrix = array ((0, 0), (lines, cols))
+        . concatMap catMaybes
+        . zipWith (map . maybeOddExp) [0 .. cols]
+        $ elems factors
+
+    solution = solve matrix
+    included = case findIndex (all (even . snd)) (elems factors) of
+        Just i -> [i]
+        Nothing -> filter (solution!) [0 .. cols]
+
+    factorCount :: UArray Int Int
+    factorCount = accumArray (+) 0 (0, lines) includedFactors where
+        includedFactors = map (first (primeIdx !))
+            $ concatMap (factors !) included
+    mergedFactors = map (first (smoothPrimes !!)) $ assocs factorCount
+
+    x = productMod n $ map (roots !) included
+    y = productMod n
+        . map (uncurry (powMod n) . bimap toInteger (.>>. 1))
+        $ mergedFactors    
 \end{lstlisting}
 \end{minipage}
 
