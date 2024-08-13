@@ -249,8 +249,9 @@ quadraticSieve n
   where
     r = ceilSqrt n
     bound = smoothnessBound n
-    candidates = map (quadraticSieveCandidates n . bPrimes n) [bound, bound*2..]
-    attempts = map (quadraticSieveAttempt n (fromInteger bound)) candidates
+    bounds = [bound, bound*2..]
+    candidates = map (quadraticSieveCandidates n . bPrimes n) bounds
+    attempts = zipWith (quadraticSieveAttempt n) (map fromInteger bounds) candidates
     success = catMaybes attempts
     ((a, b), (x, y)) = head success
 
