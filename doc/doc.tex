@@ -206,9 +206,64 @@ solve mat = trace ("Resolvendo matriz de tamanho " ++ show (snd $ bounds mat)) s
 
 \subsection{Crivo Quadrático}
 \label{quadraticSieve}
+O algorítmo do \textbf{Crivo Quadrático} utiliza de um crivo para marcar números da forma:
+$$ x^2 = n \bmod p \implies x^2 - n = 0 \bmod p \implies (x^2 - n) \divides p $$
+Para vários primos pequenos $p$ e suas potências, o crivo armazena seus logarítmos em cada posição que satisfaça à equação acima, e são filtrados como candidatos os valores cuja soma dos logaritmos dos primos adicionados atinja $\log (x^2 - n)$, o que nos dá uma alta confiança de que $x^2 - n$ será composto apenas desses primos pequenos.
+
+\begin{minipage}{0.9\linewidth}
+Em nossa implementação, nós realizamos diversas tentativas, com valores crescentes de $B$, até que uma encontre um fator não-trivial de $n$. Em cada tentativa, são gerados números primos menores que $B$, e filtramos os primos para os quais $n$ é residuo quadrático. Esses primos serão utilizados para gerar canditados para a \textbf{Fatoração de Dixon}, e então podemos utilizar o resultado disso no \textbf{Método de Fermat}.
+
+\begin{lstlisting}[language=haskell,caption=Crivo Quadrático - Principal]
+quadraticSieveAttempt n bound
+    | (a /= 1 && a /= n) || (b /= 1 && b /= n) = Just ((a, b), (x, y))
+    | otherwise = Nothing
+  where
+    primes = bPrimes n (toInteger bound)
+    candidates = quadraticSieveCandidates n primes
+    (x, y) = dixon n bound candidates
+    (a, b) = fermatMethod n x y
+\end{lstlisting}
+\end{minipage}
 
 \subsection{Crivo dos Candidatos}
 \label{sieve}
+Para gerar os candidatos para a \textbf{Fatoração de Dixon}, nós geramos os indices para cada primo, que são usados em um crivo segmentado, que trabalha com $2^{14}$ elementos por vez.
+
+Para cada primo, nós encontramos a solução para $x^2 = n \bmod p$ e a extendemos para suas potências enquanto $p^k < B$.
+Então, para cada um desses primos e suas potências, nós geramos listas de indices da forma $\ceil{\sqrt{n}} \leq x + py < n$. Para todos os primos e potências de primo ímpares, existem duas soluções para $x$, e as listas repetem até $n-1$.
+
+Note que a igualdade $x^2 = n \bmod p$ é dada pelo algorítmo de \textbf{Tonelli Shanks}, e para as potências de primos $p^{k+1}$ basta verificar se $x p^k + y = n \bmod p^{k+1}$, com $y^2 = n \bmod p^k$, para todo $x$, em $O(p)$.
+
+Nossa implementação busca por mais relações que primos na matriz, para garantir que haverá pivô livre na \textbf{Eliminação de Gauss}, e portanto solução não-trivial, ao menos na eliminação, assim o número de relações geradas é da ordem de $O(\pi(B))$.
+
+No código abaixo, são geradas as potências de primos, as soluções das equações, os índices e então uma lista que se repete até $n$, com segmentos de tamanho $2^{14}$. Como a linguagem não é estrita, essa lista de segmentos é gerada à medida que ela é consumida, e portanto a complexidade desse algoritmo também é da ordem de $O(\pi(B))$.
+
+\begin{minipage}{0.9\linewidth}
+\begin{lstlisting}[language=haskell,caption=Crivo Quadrático - Candidatos]
+quadraticSieveCandidates n iPrimes = candidates where
+    r = ceilSqrt n
+    len = shiftL 1 14
+    indices :: (Integer, (Integer, Integer)) -> [(Integer, Double)]
+    indices (p, (ia, ib)) = map (,logBase 2 $ fromInteger p) $ merge a b where
+        m = p - mod r p
+        repeat i = [r + i, r + i + p .. n-1]
+        [a, b] = map (repeat . (`mod` p) . (+m)) [ia, ib]
+    primePowers' p (ia, ib) = catMaybes
+        . takeWhile (maybe False ((<maximum iPrimes) . fst))
+        $ iterate (upliftTonelli n p) (Just (p, (ia, ib)))
+    primePowers p = maybe [] (primePowers' p) (tonelli n p)
+    solutions = concatMap primePowers iPrimes
+    step (_, (i, r)) = (sfs, (i', r')) where
+        sfs = quadraticSieveSeg n (concat i'') len r
+        r' = r + len
+        (i'', i') = unzip $ map (span ((<r') . fst)) i
+    candidates = concatMap fst
+        . takeWhile ((<n+len) . snd . snd)
+        . iterate step
+        $ ([], (map indices solutions, r))
+\end{lstlisting}
+\end{minipage}
+
 
 % TODO: Nome melhor
 \subsection{Merge}

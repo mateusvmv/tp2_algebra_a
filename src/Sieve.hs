@@ -42,7 +42,7 @@ smoothnessBound n = ceiling r where
 
 -- Recebe uma lista de candidatos cujo quadrado módulo n pode ser B-smooth
 -- Retorna (x, y), com x² = y² mod n e x != y mod n
-mergeFactors n b candidates = (x, y) where
+dixon n b candidates = (x, y) where
     factorize = factorizeBSmooth $ toInteger b
     maybeFactors i = if product fs == j then Just (i, fs) else Nothing
         where j = mod (i*i) n; fs = factorize j
@@ -136,7 +136,7 @@ quadraticSieveAttempt n bound
     candidates = trace ("Gerados " ++ show primeCount ++ " primos com B = " ++ show bound) c where
         primeCount = length . takeWhile (<=toInteger bound) $ primes
         c = quadraticSieveCandidates n primes
-    (x, y) = mergeFactors n bound candidates
+    (x, y) = dixon n bound candidates
     (a, b) = fermatMethod n x y
 
 -- Calcula dois fatores de um inteiro n utilizando o algoritmo do Crivo Quadrático
