@@ -1,3 +1,5 @@
+# Algorítmos
+Neste repositório está implementado o algorítmo do crivo quadrático e suas dependências, utilizando das optimizações de potências de primos e matrizes com arrays binárias para resolução do sistema. Veja também [o repositório do TP1](https://github.com/mateusvmv/tp1_algebra_a), no qual estão implementados outros algorítmos de fatoração e testes de primalidade.
 # Como executar
 `runghc -isrc src/Main.hs`
 ## Com Optimizações
